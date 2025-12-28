@@ -29,6 +29,7 @@ import (
 type Nasc struct {
 	registry        *registry.Registry
 	singletonCache  *singletonCache
+	providers       []*providerEntry
 }
 
 // New creates a new Nasc container instance.
@@ -43,6 +44,7 @@ func New(options ...Option) *Nasc {
 	n := &Nasc{
 		registry:       registry.New(),
 		singletonCache: newSingletonCache(),
+		providers:      make([]*providerEntry, 0),
 	}
 
 	// Apply options
