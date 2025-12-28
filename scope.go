@@ -72,8 +72,19 @@ func (s *Scope) Make(abstractType interface{}) interface{} {
 		// Double-check after acquiring write lock
 		instance, exists = s.instances[abstractT]
 		if !exists {
-			newInstance := reflect.New(binding.ConcreteType.Elem())
-			instance = newInstance.Interface()
+			// Check if this is a constructor binding
+			if binding.Constructor != nil {
+				info := binding.Constructor.(*constructorInfo)
+				newInstance, err := s.parent.invokeConstructor(info)
+				if err != nil {
+					s.mu.Unlock()
+					panic(fmt.Sprintf("failed to invoke constructor for scoped type %v: %v", abstractT, err))
+				}
+				instance = newInstance
+			} else {
+				newInstance := reflect.New(binding.ConcreteType.Elem())
+				instance = newInstance.Interface()
+			}
 			s.instances[abstractT] = instance
 		}
 		s.mu.Unlock()
@@ -90,6 +101,15 @@ func (s *Scope) Make(abstractType interface{}) interface{} {
 
 	case LifetimeTransient:
 		// Create new instance (don't cache)
+		// Check if this is a constructor binding
+		if binding.Constructor != nil {
+			info := binding.Constructor.(*constructorInfo)
+			instance, err := s.parent.invokeConstructor(info)
+			if err != nil {
+				panic(fmt.Sprintf("failed to invoke constructor for transient type %v: %v", abstractT, err))
+			}
+			return instance
+		}
 		instance := reflect.New(binding.ConcreteType.Elem())
 		return instance.Interface()
 

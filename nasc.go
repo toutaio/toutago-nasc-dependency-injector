@@ -141,13 +141,28 @@ func (n *Nasc) Make(abstractType interface{}) interface{} {
 	// Resolve based on lifetime
 	switch Lifetime(binding.Lifetime) {
 	case LifetimeTransient:
-		// Create new instance
+		// Check if this is a constructor binding
+		if binding.Constructor != nil {
+			info := binding.Constructor.(*constructorInfo)
+			instance, err := n.invokeConstructor(info)
+			if err != nil {
+				panic(fmt.Sprintf("failed to invoke constructor for type %v: %v", abstractT, err))
+			}
+			return instance
+		}
+		// Create new instance using reflection
 		instance := reflect.New(binding.ConcreteType.Elem())
 		return instance.Interface()
 
 	case LifetimeSingleton:
 		// Get or create singleton
 		instance, err := n.singletonCache.getOrCreate(abstractT, func() (interface{}, error) {
+			// Check if this is a constructor binding
+			if binding.Constructor != nil {
+				info := binding.Constructor.(*constructorInfo)
+				return n.invokeConstructor(info)
+			}
+			// Use reflection
 			newInstance := reflect.New(binding.ConcreteType.Elem())
 			return newInstance.Interface(), nil
 		})

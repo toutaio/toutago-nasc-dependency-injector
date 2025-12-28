@@ -24,6 +24,10 @@ type Binding struct {
 	// Only used when Lifetime is "factory"
 	Factory interface{} // stores FactoryFunc
 
+	// Constructor holds constructor function metadata
+	// Phase 4 feature - stores *constructorInfo
+	Constructor interface{}
+
 	// AutoWireEnabled indicates whether to auto-wire instances after creation
 	// Phase 3 feature
 	AutoWireEnabled bool
