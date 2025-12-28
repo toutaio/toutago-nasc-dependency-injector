@@ -237,3 +237,56 @@ return true
 }
 return false
 }
+
+// GetAllTypes returns all types that have bindings (named or unnamed).
+func (r *Registry) GetAllTypes() []reflect.Type {
+r.mu.RLock()
+defer r.mu.RUnlock()
+
+typeSet := make(map[reflect.Type]bool)
+
+// Add unnamed binding types
+for abstractType := range r.bindings {
+typeSet[abstractType] = true
+}
+
+// Add named binding types
+for abstractType := range r.namedBindings {
+typeSet[abstractType] = true
+}
+
+// Convert to slice
+types := make([]reflect.Type, 0, len(typeSet))
+for t := range typeSet {
+types = append(types, t)
+}
+
+return types
+}
+
+// GetAllNamedFor returns all names for a given type.
+func (r *Registry) GetAllNamedFor(abstractType reflect.Type) []string {
+r.mu.RLock()
+defer r.mu.RUnlock()
+
+namedMap, exists := r.namedBindings[abstractType]
+if !exists {
+return nil
+}
+
+names := make([]string, 0, len(namedMap))
+for name := range namedMap {
+names = append(names, name)
+}
+
+return names
+}
+
+// HasUnnamedBinding checks if there's an unnamed binding for a type.
+func (r *Registry) HasUnnamedBinding(abstractType reflect.Type) bool {
+r.mu.RLock()
+defer r.mu.RUnlock()
+
+_, exists := r.bindings[abstractType]
+return exists
+}

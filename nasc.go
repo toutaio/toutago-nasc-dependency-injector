@@ -538,3 +538,252 @@ default:
 panic(fmt.Sprintf("unknown lifetime %s for type %v", binding.Lifetime, abstractT))
 }
 }
+
+// resolutionContext tracks the current resolution path for circular dependency detection.
+type resolutionContext struct {
+stack []string
+seen  map[string]bool
+}
+
+// newResolutionContext creates a new resolution context.
+func newResolutionContext() *resolutionContext {
+return &resolutionContext{
+stack: make([]string, 0),
+seen:  make(map[string]bool),
+}
+}
+
+// push adds a type to the resolution stack.
+func (rc *resolutionContext) push(typeName string) error {
+if rc.seen[typeName] {
+// Circular dependency detected
+path := append(rc.stack, typeName)
+return &CircularDependencyError{Path: path}
+}
+rc.seen[typeName] = true
+rc.stack = append(rc.stack, typeName)
+return nil
+}
+
+// pop removes the last type from the resolution stack.
+func (rc *resolutionContext) pop() {
+if len(rc.stack) > 0 {
+last := rc.stack[len(rc.stack)-1]
+delete(rc.seen, last)
+rc.stack = rc.stack[:len(rc.stack)-1]
+}
+}
+
+// MakeSafe resolves and returns an instance without panicking.
+// Returns (instance, nil) on success or (nil, error) on failure.
+//
+// Example:
+//
+//logger, err := container.MakeSafe((*Logger)(nil))
+//if err != nil {
+//    return fmt.Errorf("failed to get logger: %w", err)
+//}
+func (n *Nasc) MakeSafe(abstractType interface{}) (interface{}, error) {
+if abstractType == nil {
+return nil, &InvalidBindingError{Reason: "cannot resolve nil type"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+ctx := newResolutionContext()
+return n.makeSafeWithContext(abstractT, "", ctx)
+}
+
+// MakeNamedSafe resolves a named instance without panicking.
+func (n *Nasc) MakeNamedSafe(abstractType interface{}, name string) (interface{}, error) {
+if abstractType == nil {
+return nil, &InvalidBindingError{Reason: "cannot resolve nil type"}
+}
+if name == "" {
+return nil, &InvalidBindingError{Reason: "name cannot be empty"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+ctx := newResolutionContext()
+return n.makeSafeWithContext(abstractT, name, ctx)
+}
+
+// makeSafeWithContext performs safe resolution with circular dependency detection.
+func (n *Nasc) makeSafeWithContext(abstractT reflect.Type, name string, ctx *resolutionContext) (interface{}, error) {
+// Build type key for tracking
+typeKey := abstractT.String()
+if name != "" {
+typeKey = fmt.Sprintf("%s[%s]", typeKey, name)
+}
+
+// Check for circular dependency
+if err := ctx.push(typeKey); err != nil {
+return nil, err
+}
+defer ctx.pop()
+
+// Get binding
+var binding *registry.Binding
+var err error
+
+if name != "" {
+binding, err = n.registry.GetNamed(abstractT, name)
+} else {
+binding, err = n.registry.Get(abstractT)
+}
+
+if err != nil {
+return nil, &ResolutionError{
+Type:  abstractT,
+Name:  name,
+Cause: err,
+}
+}
+
+// Create instance
+return n.createInstanceSafe(binding, abstractT, ctx)
+}
+
+// createInstanceSafe creates an instance safely with context.
+func (n *Nasc) createInstanceSafe(binding *registry.Binding, abstractT reflect.Type, ctx *resolutionContext) (interface{}, error) {
+switch Lifetime(binding.Lifetime) {
+case LifetimeTransient:
+if binding.Constructor != nil {
+info := binding.Constructor.(*constructorInfo)
+return n.invokeConstructorSafe(info, ctx)
+}
+instance := reflect.New(binding.ConcreteType.Elem())
+return instance.Interface(), nil
+
+case LifetimeSingleton:
+cacheKey := abstractT
+if binding.Name != "" {
+cacheKey = reflect.TypeOf(struct {
+t reflect.Type
+n string
+}{abstractT, binding.Name})
+}
+
+// For singletons, we need to handle potential circular deps in factory
+instance, err := n.singletonCache.getOrCreate(cacheKey, func() (interface{}, error) {
+if binding.Constructor != nil {
+info := binding.Constructor.(*constructorInfo)
+return n.invokeConstructorSafe(info, ctx)
+}
+newInstance := reflect.New(binding.ConcreteType.Elem())
+return newInstance.Interface(), nil
+})
+return instance, err
+
+case LifetimeFactory:
+factory, ok := binding.Factory.(FactoryFunc)
+if !ok {
+return nil, &ResolutionError{
+Type:    abstractT,
+Context: "invalid factory function",
+}
+}
+return factory(n)
+
+default:
+return nil, &ResolutionError{
+Type:    abstractT,
+Context: fmt.Sprintf("unknown lifetime: %s", binding.Lifetime),
+}
+}
+}
+
+// invokeConstructorSafe invokes a constructor safely with circular detection.
+func (n *Nasc) invokeConstructorSafe(info *constructorInfo, ctx *resolutionContext) (interface{}, error) {
+params := make([]reflect.Value, len(info.paramTypes))
+
+for i, paramType := range info.paramTypes {
+// Resolve parameter with context
+param, err := n.makeSafeWithContext(paramType, "", ctx)
+if err != nil {
+return nil, &ResolutionError{
+Type:    info.returnType,
+Context: fmt.Sprintf("failed to resolve constructor parameter %d (%v)", i, paramType),
+Cause:   err,
+}
+}
+params[i] = reflect.ValueOf(param)
+}
+
+// Call constructor
+results := info.fn.Call(params)
+
+// Handle error return
+if len(results) == 2 {
+if !results[1].IsNil() {
+err := results[1].Interface().(error)
+return nil, &ResolutionError{
+Type:    info.returnType,
+Context: "constructor returned error",
+Cause:   err,
+}
+}
+}
+
+return results[0].Interface(), nil
+}
+
+// Validate checks the container's bindings for potential issues.
+// Returns nil if validation passes, or ValidationError with all found issues.
+//
+// Example:
+//
+//if err := container.Validate(); err != nil {
+//    log.Fatalf("Container validation failed: %v", err)
+//}
+func (n *Nasc) Validate() error {
+var validationErrors []error
+
+// Get all types
+allTypes := n.registry.GetAllTypes()
+
+// Try to resolve each type
+for _, abstractType := range allTypes {
+// Try unnamed binding if exists
+if n.registry.HasUnnamedBinding(abstractType) {
+ctx := newResolutionContext()
+_, err := n.makeSafeWithContext(abstractType, "", ctx)
+if err != nil {
+validationErrors = append(validationErrors, fmt.Errorf("binding %v: %w", abstractType, err))
+}
+}
+
+// Try all named bindings for this type
+names := n.registry.GetAllNamedFor(abstractType)
+for _, name := range names {
+ctx := newResolutionContext()
+_, err := n.makeSafeWithContext(abstractType, name, ctx)
+if err != nil {
+validationErrors = append(validationErrors, fmt.Errorf("binding %v[%s]: %w", abstractType, name, err))
+}
+}
+}
+
+if len(validationErrors) > 0 {
+return &ValidationError{Errors: validationErrors}
+}
+
+return nil
+}
+
+// MustMake is an explicit panic version of Make for cases where panic is desired.
+// This is useful to distinguish intentional panics from unintended ones.
+func (n *Nasc) MustMake(abstractType interface{}) interface{} {
+instance, err := n.MakeSafe(abstractType)
+if err != nil {
+panic(err)
+}
+return instance
+}
