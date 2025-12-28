@@ -13,11 +13,16 @@ type Binding struct {
 	AbstractType reflect.Type
 
 	// ConcreteType is the implementation type (e.g., *ConsoleLogger)
+	// For factory bindings, this may be nil
 	ConcreteType reflect.Type
 
-	// Lifetime defines how instances are managed (Phase 2 feature)
-	// Currently unused in Phase 1 (all bindings are transient)
+	// Lifetime defines how instances are managed
+	// Values: "transient", "singleton", "scoped", "factory"
 	Lifetime string
+
+	// Factory is the custom creation function for factory bindings
+	// Only used when Lifetime is "factory"
+	Factory interface{} // stores FactoryFunc
 
 	// Name is an optional identifier for named bindings (Phase 6 feature)
 	Name string

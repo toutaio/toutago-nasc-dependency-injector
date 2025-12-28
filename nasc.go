@@ -27,7 +27,8 @@ import (
 // Nasc is the main dependency injection container.
 // It manages bindings and resolves dependencies in a thread-safe manner.
 type Nasc struct {
-	registry *registry.Registry
+	registry        *registry.Registry
+	singletonCache  *singletonCache
 }
 
 // New creates a new Nasc container instance.
@@ -40,7 +41,8 @@ type Nasc struct {
 //	container := nasc.New(nasc.WithDebug())
 func New(options ...Option) *Nasc {
 	n := &Nasc{
-		registry: registry.New(),
+		registry:       registry.New(),
+		singletonCache: newSingletonCache(),
 	}
 
 	// Apply options
@@ -93,6 +95,7 @@ func (n *Nasc) Bind(abstractType, concreteType interface{}) error {
 	binding := &registry.Binding{
 		AbstractType: abstractT,
 		ConcreteType: concreteT,
+		Lifetime:     string(LifetimeTransient),
 	}
 
 	// Register binding
@@ -106,11 +109,17 @@ func (n *Nasc) Bind(abstractType, concreteType interface{}) error {
 // Make resolves and returns an instance of the registered type.
 // The abstractType should be an interface pointer like (*Logger)(nil).
 //
+// The resolution behavior depends on the binding's lifetime:
+//   - Transient: Creates a new instance every time
+//   - Singleton: Returns the same instance (created lazily on first call)
+//   - Factory: Calls the factory function to create an instance
+//   - Scoped: Panics (scoped bindings must use Scope.Make())
+//
 // Example:
 //
 //	logger := container.Make((*Logger)(nil)).(Logger)
 //
-// Phase 1 behavior: Panics if the binding is not found.
+// Phase 1-2 behavior: Panics if the binding is not found.
 // Future phases will add MakeSafe() for error handling.
 func (n *Nasc) Make(abstractType interface{}) interface{} {
 	if abstractType == nil {
@@ -129,9 +138,165 @@ func (n *Nasc) Make(abstractType interface{}) interface{} {
 		panic(fmt.Sprintf("binding not found for type %v: %v", abstractT, err))
 	}
 
-	// Create instance using reflection
-	// ConcreteType is already a pointer type, so we create a new instance
-	instance := reflect.New(binding.ConcreteType.Elem())
+	// Resolve based on lifetime
+	switch Lifetime(binding.Lifetime) {
+	case LifetimeTransient:
+		// Create new instance
+		instance := reflect.New(binding.ConcreteType.Elem())
+		return instance.Interface()
 
-	return instance.Interface()
+	case LifetimeSingleton:
+		// Get or create singleton
+		instance, err := n.singletonCache.getOrCreate(abstractT, func() (interface{}, error) {
+			newInstance := reflect.New(binding.ConcreteType.Elem())
+			return newInstance.Interface(), nil
+		})
+		if err != nil {
+			panic(fmt.Sprintf("failed to create singleton for type %v: %v", abstractT, err))
+		}
+		return instance
+
+	case LifetimeFactory:
+		// Call factory function
+		factory, ok := binding.Factory.(FactoryFunc)
+		if !ok {
+			panic(fmt.Sprintf("invalid factory function for type %v", abstractT))
+		}
+		instance, err := factory(n)
+		if err != nil {
+			panic(fmt.Sprintf("factory function failed for type %v: %v", abstractT, err))
+		}
+		return instance
+
+	case LifetimeScoped:
+		// Scoped bindings must be resolved through Scope.Make()
+		panic(fmt.Sprintf("scoped binding for type %v must be resolved using Scope.Make(), not container.Make()", abstractT))
+
+	default:
+		panic(fmt.Sprintf("unknown lifetime %s for type %v", binding.Lifetime, abstractT))
+	}
+}
+
+// Singleton registers a singleton binding.
+// The instance is created lazily on first resolution and reused for all subsequent resolutions.
+// Singleton creation is thread-safe using sync.Once.
+//
+// Example:
+//
+//container.Singleton((*Database)(nil), &PostgresDB{})
+//db1 := container.Make((*Database)(nil)).(Database)
+//db2 := container.Make((*Database)(nil)).(Database)
+//// db1 == db2 (same instance)
+func (n *Nasc) Singleton(abstractType, concreteType interface{}) error {
+if abstractType == nil {
+return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+}
+if concreteType == nil {
+return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+concreteT := reflect.TypeOf(concreteType)
+if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+// Valid pointer to struct
+} else {
+return &InvalidBindingError{
+Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+}
+}
+
+binding := &registry.Binding{
+AbstractType: abstractT,
+ConcreteType: concreteT,
+Lifetime:     string(LifetimeSingleton),
+}
+
+return n.registry.Register(binding)
+}
+
+// Scoped registers a scoped binding.
+// One instance is created per scope. Scoped bindings must be resolved using Scope.Make().
+//
+// Example:
+//
+//container.Scoped((*UnitOfWork)(nil), &DbUnitOfWork{})
+//scope := container.CreateScope()
+//uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
+func (n *Nasc) Scoped(abstractType, concreteType interface{}) error {
+if abstractType == nil {
+return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+}
+if concreteType == nil {
+return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+concreteT := reflect.TypeOf(concreteType)
+if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+// Valid pointer to struct
+} else {
+return &InvalidBindingError{
+Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+}
+}
+
+binding := &registry.Binding{
+AbstractType: abstractT,
+ConcreteType: concreteT,
+Lifetime:     string(LifetimeScoped),
+}
+
+return n.registry.Register(binding)
+}
+
+// Factory registers a factory binding.
+// The factory function is called on every resolution to create instances.
+//
+// Example:
+//
+//container.Factory((*Connection)(nil), func(c *Nasc) (interface{}, error) {
+//    config := c.Make((*Config)(nil)).(*Config)
+//    return NewConnection(config.DSN), nil
+//})
+func (n *Nasc) Factory(abstractType interface{}, factory FactoryFunc) error {
+if abstractType == nil {
+return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+}
+if factory == nil {
+return &InvalidBindingError{Reason: "factory function cannot be nil"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+binding := &registry.Binding{
+AbstractType: abstractT,
+ConcreteType: nil, // Factory doesn't have a concrete type
+Lifetime:     string(LifetimeFactory),
+Factory:      factory,
+}
+
+return n.registry.Register(binding)
+}
+
+// CreateScope creates a new dependency resolution scope.
+// Scoped bindings create one instance per scope.
+//
+// Example:
+//
+//scope := container.CreateScope()
+//defer scope.Dispose()
+//uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
+func (n *Nasc) CreateScope() *Scope {
+return newScope(n)
 }
