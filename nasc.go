@@ -317,3 +317,224 @@ return n.registry.Register(binding)
 func (n *Nasc) CreateScope() *Scope {
 return newScope(n)
 }
+
+// BindNamed registers a named binding.
+// Named bindings allow multiple implementations of the same interface.
+//
+// Example:
+//
+//container.BindNamed((*Logger)(nil), &FileLogger{}, "file")
+//container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
+//
+//fileLogger := container.MakeNamed((*Logger)(nil), "file").(Logger)
+func (n *Nasc) BindNamed(abstractType, concreteType interface{}, name string) error {
+if abstractType == nil {
+return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+}
+if concreteType == nil {
+return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+}
+if name == "" {
+return &InvalidBindingError{Reason: "name cannot be empty"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+concreteT := reflect.TypeOf(concreteType)
+if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+// Valid pointer to struct
+} else {
+return &InvalidBindingError{
+Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+}
+}
+
+binding := &registry.Binding{
+AbstractType: abstractT,
+ConcreteType: concreteT,
+Lifetime:     string(LifetimeTransient),
+Name:         name,
+}
+
+return n.registry.RegisterNamed(binding)
+}
+
+// MakeNamed resolves and returns a named instance.
+//
+// Example:
+//
+//logger := container.MakeNamed((*Logger)(nil), "file").(Logger)
+func (n *Nasc) MakeNamed(abstractType interface{}, name string) interface{} {
+if abstractType == nil {
+panic("cannot resolve nil type")
+}
+if name == "" {
+panic("name cannot be empty")
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+binding, err := n.registry.GetNamed(abstractT, name)
+if err != nil {
+panic(fmt.Sprintf("named binding '%s' not found for type %v: %v", name, abstractT, err))
+}
+
+// Create instance based on binding type
+return n.createInstanceFromBinding(binding, abstractT)
+}
+
+// MakeAll resolves and returns all implementations of an interface.
+// This includes both named and unnamed bindings.
+//
+// Example:
+//
+//loggers := container.MakeAll((*Logger)(nil))
+//for _, logger := range loggers {
+//    logger.(Logger).Log("message")
+//}
+func (n *Nasc) MakeAll(abstractType interface{}) []interface{} {
+if abstractType == nil {
+panic("cannot resolve nil type")
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+bindings := n.registry.GetAll(abstractT)
+instances := make([]interface{}, 0, len(bindings))
+
+for _, binding := range bindings {
+instance := n.createInstanceFromBinding(binding, abstractT)
+instances = append(instances, instance)
+}
+
+return instances
+}
+
+// BindWithTags registers a binding with tags.
+// Tags enable grouping and batch resolution of related services.
+//
+// Example:
+//
+//container.BindWithTags((*Plugin)(nil), &PluginA{}, []string{"plugin", "enabled"})
+//container.BindWithTags((*Plugin)(nil), &PluginB{}, []string{"plugin", "enabled"})
+//
+//plugins := container.MakeWithTag("plugin")
+func (n *Nasc) BindWithTags(abstractType, concreteType interface{}, tags []string) error {
+if abstractType == nil {
+return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+}
+if concreteType == nil {
+return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+}
+
+abstractT := reflect.TypeOf(abstractType)
+if abstractT.Kind() == reflect.Ptr {
+abstractT = abstractT.Elem()
+}
+
+concreteT := reflect.TypeOf(concreteType)
+if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+// Valid pointer to struct
+} else {
+return &InvalidBindingError{
+Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+}
+}
+
+binding := &registry.Binding{
+AbstractType: abstractT,
+ConcreteType: concreteT,
+Lifetime:     string(LifetimeTransient),
+Tags:         tags,
+}
+
+// Tagged bindings need unique names to avoid conflicts
+binding.Name = fmt.Sprintf("_tag_%s_%p", tags[0], concreteType)
+return n.registry.RegisterNamed(binding)
+}
+
+// MakeWithTag resolves all instances with the specified tag.
+//
+// Example:
+//
+//plugins := container.MakeWithTag("plugin")
+func (n *Nasc) MakeWithTag(tag string) []interface{} {
+if tag == "" {
+panic("tag cannot be empty")
+}
+
+bindings := n.registry.GetByTag(tag)
+instances := make([]interface{}, 0, len(bindings))
+
+for _, binding := range bindings {
+instance := n.createInstanceFromBinding(binding, binding.AbstractType)
+instances = append(instances, instance)
+}
+
+return instances
+}
+
+// createInstanceFromBinding creates an instance from a binding.
+// This centralizes instance creation logic for reuse.
+func (n *Nasc) createInstanceFromBinding(binding *registry.Binding, abstractT reflect.Type) interface{} {
+switch Lifetime(binding.Lifetime) {
+case LifetimeTransient:
+if binding.Constructor != nil {
+info := binding.Constructor.(*constructorInfo)
+instance, err := n.invokeConstructor(info)
+if err != nil {
+panic(fmt.Sprintf("failed to invoke constructor for type %v: %v", abstractT, err))
+}
+return instance
+}
+instance := reflect.New(binding.ConcreteType.Elem())
+return instance.Interface()
+
+case LifetimeSingleton:
+// For named/tagged singletons, use name as cache key
+cacheKey := abstractT
+if binding.Name != "" {
+// Create unique key combining type and name
+cacheKey = reflect.TypeOf(struct {
+t reflect.Type
+n string
+}{abstractT, binding.Name})
+}
+
+instance, err := n.singletonCache.getOrCreate(cacheKey, func() (interface{}, error) {
+if binding.Constructor != nil {
+info := binding.Constructor.(*constructorInfo)
+return n.invokeConstructor(info)
+}
+newInstance := reflect.New(binding.ConcreteType.Elem())
+return newInstance.Interface(), nil
+})
+if err != nil {
+panic(fmt.Sprintf("failed to create singleton for type %v: %v", abstractT, err))
+}
+return instance
+
+case LifetimeFactory:
+factory, ok := binding.Factory.(FactoryFunc)
+if !ok {
+panic(fmt.Sprintf("invalid factory function for type %v", abstractT))
+}
+instance, err := factory(n)
+if err != nil {
+panic(fmt.Sprintf("factory function failed for type %v: %v", abstractT, err))
+}
+return instance
+
+default:
+panic(fmt.Sprintf("unknown lifetime %s for type %v", binding.Lifetime, abstractT))
+}
+}

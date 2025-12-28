@@ -42,14 +42,16 @@ type Binding struct {
 // Registry provides thread-safe storage for bindings.
 // It uses a map with reflect.Type keys for O(1) lookup performance.
 type Registry struct {
-	bindings map[reflect.Type]*Binding
-	mu       sync.RWMutex
+	mu            sync.RWMutex
+	bindings      map[reflect.Type]*Binding
+	namedBindings map[reflect.Type]map[string]*Binding
 }
 
 // New creates a new Registry instance.
 func New() *Registry {
 	return &Registry{
-		bindings: make(map[reflect.Type]*Binding),
+		bindings:      make(map[reflect.Type]*Binding),
+		namedBindings: make(map[reflect.Type]map[string]*Binding),
 	}
 }
 
@@ -119,4 +121,119 @@ type BindingNotFoundError struct {
 
 func (e *BindingNotFoundError) Error() string {
 	return fmt.Sprintf("binding not found for type %v", e.Type)
+}
+
+// RegisterNamed stores a named binding in the registry.
+// Multiple bindings of the same type can exist with different names.
+//
+// This method is goroutine-safe.
+func (r *Registry) RegisterNamed(binding *Binding) error {
+if binding == nil {
+return fmt.Errorf("binding cannot be nil")
+}
+if binding.Name == "" {
+return fmt.Errorf("named binding must have a name")
+}
+
+r.mu.Lock()
+defer r.mu.Unlock()
+
+// Initialize nested map if needed
+if r.namedBindings[binding.AbstractType] == nil {
+r.namedBindings[binding.AbstractType] = make(map[string]*Binding)
+}
+
+// Check for duplicate name
+if _, exists := r.namedBindings[binding.AbstractType][binding.Name]; exists {
+return fmt.Errorf("named binding '%s' for type %v already exists", binding.Name, binding.AbstractType)
+}
+
+r.namedBindings[binding.AbstractType][binding.Name] = binding
+return nil
+}
+
+// GetNamed retrieves a binding by type and name.
+// Returns the binding and nil error if found.
+// Returns nil binding and error if not found.
+//
+// This method is goroutine-safe.
+func (r *Registry) GetNamed(abstractType reflect.Type, name string) (*Binding, error) {
+r.mu.RLock()
+defer r.mu.RUnlock()
+
+typeBindings, exists := r.namedBindings[abstractType]
+if !exists {
+return nil, &BindingNotFoundError{Type: abstractType}
+}
+
+binding, exists := typeBindings[name]
+if !exists {
+return nil, fmt.Errorf("named binding '%s' for type %v not found", name, abstractType)
+}
+
+return binding, nil
+}
+
+// GetAll returns all bindings for a given type (both named and unnamed).
+// Returns empty slice if no bindings found.
+//
+// This method is goroutine-safe.
+func (r *Registry) GetAll(abstractType reflect.Type) []*Binding {
+r.mu.RLock()
+defer r.mu.RUnlock()
+
+var result []*Binding
+
+// Add default binding if exists
+if binding, exists := r.bindings[abstractType]; exists {
+result = append(result, binding)
+}
+
+// Add all named bindings
+if namedBindings, exists := r.namedBindings[abstractType]; exists {
+for _, binding := range namedBindings {
+result = append(result, binding)
+}
+}
+
+return result
+}
+
+// GetByTag returns all bindings that have the specified tag.
+// Returns empty slice if no tagged bindings found.
+//
+// This method is goroutine-safe.
+func (r *Registry) GetByTag(tag string) []*Binding {
+r.mu.RLock()
+defer r.mu.RUnlock()
+
+var result []*Binding
+
+// Check unnamed bindings
+for _, binding := range r.bindings {
+if containsTag(binding.Tags, tag) {
+result = append(result, binding)
+}
+}
+
+// Check named bindings
+for _, namedMap := range r.namedBindings {
+for _, binding := range namedMap {
+if containsTag(binding.Tags, tag) {
+result = append(result, binding)
+}
+}
+}
+
+return result
+}
+
+// containsTag checks if a tag exists in a slice of tags.
+func containsTag(tags []string, tag string) bool {
+for _, t := range tags {
+if t == tag {
+return true
+}
+}
+return false
 }

@@ -151,12 +151,6 @@ func (n *Nasc) injectField(field fieldInfo) error {
 		return fmt.Errorf("field %s is not settable (not exported?)", field.field.Name)
 	}
 
-	// For now, Phase 3 doesn't support named bindings (that's Phase 6)
-	// We'll just resolve by type
-	if field.options.name != "" {
-		return fmt.Errorf("named bindings not yet supported (Phase 6 feature)")
-	}
-
 	// Create type token for resolution
 	var typeToken interface{}
 	if field.isInterface {
@@ -176,7 +170,13 @@ func (n *Nasc) injectField(field fieldInfo) error {
 				resolveErr = fmt.Errorf("resolution panicked: %v", r)
 			}
 		}()
-		resolved = n.Make(typeToken)
+		
+		// Check if this is a named dependency
+		if field.options.name != "" {
+			resolved = n.MakeNamed(typeToken, field.options.name)
+		} else {
+			resolved = n.Make(typeToken)
+		}
 	}()
 
 	// Handle resolution failure
