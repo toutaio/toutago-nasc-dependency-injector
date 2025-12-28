@@ -24,6 +24,10 @@ type Binding struct {
 	// Only used when Lifetime is "factory"
 	Factory interface{} // stores FactoryFunc
 
+	// AutoWireEnabled indicates whether to auto-wire instances after creation
+	// Phase 3 feature
+	AutoWireEnabled bool
+
 	// Name is an optional identifier for named bindings (Phase 6 feature)
 	Name string
 
