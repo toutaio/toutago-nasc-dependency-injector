@@ -46,8 +46,8 @@ func parseInjectTag(tag string) tagOptions {
 	return opts
 }
 
-// fieldInfo holds metadata about a field to inject.
-type fieldInfo struct {
+// autoWireFieldInfo holds metadata about a field to inject.
+type autoWireFieldInfo struct {
 	field       reflect.StructField
 	fieldValue  reflect.Value
 	options     tagOptions
@@ -56,8 +56,9 @@ type fieldInfo struct {
 }
 
 // getInjectableFields scans a struct and returns fields that need injection.
-func getInjectableFields(structValue reflect.Value) []fieldInfo {
-	var fields []fieldInfo
+// Uses the reflection cache for improved performance.
+func (n *Nasc) getInjectableFields(structValue reflect.Value) []autoWireFieldInfo {
+	var fields []autoWireFieldInfo
 
 	structType := structValue.Type()
 	if structType.Kind() == reflect.Ptr {
@@ -69,28 +70,29 @@ func getInjectableFields(structValue reflect.Value) []fieldInfo {
 		return fields
 	}
 
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i)
-		fieldValue := structValue.Field(i)
+	// Use reflection cache to get field info
+	cachedFields := n.reflectionCache.getFieldInfo(structType)
 
-		// Check for inject tag
-		tag, ok := field.Tag.Lookup("inject")
-		if !ok {
+	for _, cached := range cachedFields {
+		if !cached.isInjectable {
 			continue
 		}
 
+		fieldValue := structValue.Field(cached.index)
+		tag := string(cached.tag.Get("inject"))
 		opts := parseInjectTag(tag)
+
 		if opts.skip {
 			continue
 		}
 
 		// Store field info
-		info := fieldInfo{
-			field:       field,
+		info := autoWireFieldInfo{
+			field:       structType.Field(cached.index),
 			fieldValue:  fieldValue,
 			options:     opts,
-			fieldType:   field.Type,
-			isInterface: field.Type.Kind() == reflect.Interface,
+			fieldType:   cached.typ,
+			isInterface: cached.typ.Kind() == reflect.Interface,
 		}
 
 		fields = append(fields, info)
@@ -133,7 +135,7 @@ func (n *Nasc) AutoWire(instance interface{}) error {
 	}
 
 	// Get fields that need injection
-	fields := getInjectableFields(value)
+	fields := n.getInjectableFields(value)
 
 	// Inject each field
 	for _, field := range fields {
@@ -146,7 +148,7 @@ func (n *Nasc) AutoWire(instance interface{}) error {
 }
 
 // injectField injects a single field.
-func (n *Nasc) injectField(field fieldInfo) error {
+func (n *Nasc) injectField(field autoWireFieldInfo) error {
 	if !field.fieldValue.CanSet() {
 		return fmt.Errorf("field %s is not settable (not exported?)", field.field.Name)
 	}

@@ -29,6 +29,7 @@ import (
 type Nasc struct {
 	registry        *registry.Registry
 	singletonCache  *singletonCache
+	reflectionCache *reflectionCache
 	providers       []*providerEntry
 }
 
@@ -42,9 +43,10 @@ type Nasc struct {
 //	container := nasc.New(nasc.WithDebug())
 func New(options ...Option) *Nasc {
 	n := &Nasc{
-		registry:       registry.New(),
-		singletonCache: newSingletonCache(),
-		providers:      make([]*providerEntry, 0),
+		registry:        registry.New(),
+		singletonCache:  newSingletonCache(),
+		reflectionCache: newReflectionCache(),
+		providers:       make([]*providerEntry, 0),
 	}
 
 	// Apply options
@@ -486,57 +488,83 @@ return instances
 // createInstanceFromBinding creates an instance from a binding.
 // This centralizes instance creation logic for reuse.
 func (n *Nasc) createInstanceFromBinding(binding *registry.Binding, abstractT reflect.Type) interface{} {
-switch Lifetime(binding.Lifetime) {
-case LifetimeTransient:
-if binding.Constructor != nil {
-info := binding.Constructor.(*constructorInfo)
-instance, err := n.invokeConstructor(info)
-if err != nil {
-panic(fmt.Sprintf("failed to invoke constructor for type %v: %v", abstractT, err))
-}
-return instance
-}
-instance := reflect.New(binding.ConcreteType.Elem())
-return instance.Interface()
+	switch Lifetime(binding.Lifetime) {
+	case LifetimeTransient:
+		var instance interface{}
+		if binding.Constructor != nil {
+			info := binding.Constructor.(*constructorInfo)
+			inst, err := n.invokeConstructor(info)
+			if err != nil {
+				panic(fmt.Sprintf("failed to invoke constructor for type %v: %v", abstractT, err))
+			}
+			instance = inst
+		} else {
+			inst := reflect.New(binding.ConcreteType.Elem())
+			instance = inst.Interface()
+		}
 
-case LifetimeSingleton:
-// For named/tagged singletons, use name as cache key
-cacheKey := abstractT
-if binding.Name != "" {
-// Create unique key combining type and name
-cacheKey = reflect.TypeOf(struct {
-t reflect.Type
-n string
-}{abstractT, binding.Name})
-}
+		// Auto-wire if enabled
+		if binding.AutoWireEnabled {
+			if err := n.AutoWire(instance); err != nil {
+				panic(fmt.Sprintf("failed to auto-wire instance for type %v: %v", abstractT, err))
+			}
+		}
 
-instance, err := n.singletonCache.getOrCreate(cacheKey, func() (interface{}, error) {
-if binding.Constructor != nil {
-info := binding.Constructor.(*constructorInfo)
-return n.invokeConstructor(info)
-}
-newInstance := reflect.New(binding.ConcreteType.Elem())
-return newInstance.Interface(), nil
-})
-if err != nil {
-panic(fmt.Sprintf("failed to create singleton for type %v: %v", abstractT, err))
-}
-return instance
+		return instance
 
-case LifetimeFactory:
-factory, ok := binding.Factory.(FactoryFunc)
-if !ok {
-panic(fmt.Sprintf("invalid factory function for type %v", abstractT))
-}
-instance, err := factory(n)
-if err != nil {
-panic(fmt.Sprintf("factory function failed for type %v: %v", abstractT, err))
-}
-return instance
+	case LifetimeSingleton:
+		// For named/tagged singletons, use name as cache key
+		cacheKey := abstractT
+		if binding.Name != "" {
+			// Create unique key combining type and name
+			cacheKey = reflect.TypeOf(struct {
+				t reflect.Type
+				n string
+			}{abstractT, binding.Name})
+		}
 
-default:
-panic(fmt.Sprintf("unknown lifetime %s for type %v", binding.Lifetime, abstractT))
-}
+		instance, err := n.singletonCache.getOrCreate(cacheKey, func() (interface{}, error) {
+			var inst interface{}
+			if binding.Constructor != nil {
+				info := binding.Constructor.(*constructorInfo)
+				i, err := n.invokeConstructor(info)
+				if err != nil {
+					return nil, err
+				}
+				inst = i
+			} else {
+				newInstance := reflect.New(binding.ConcreteType.Elem())
+				inst = newInstance.Interface()
+			}
+
+			// Auto-wire if enabled
+			if binding.AutoWireEnabled {
+				if err := n.AutoWire(inst); err != nil {
+					return nil, err
+				}
+			}
+
+			return inst, nil
+		})
+		if err != nil {
+			panic(fmt.Sprintf("failed to create singleton for type %v: %v", abstractT, err))
+		}
+		return instance
+
+	case LifetimeFactory:
+		factory, ok := binding.Factory.(FactoryFunc)
+		if !ok {
+			panic(fmt.Sprintf("invalid factory function for type %v", abstractT))
+		}
+		instance, err := factory(n)
+		if err != nil {
+			panic(fmt.Sprintf("factory function failed for type %v: %v", abstractT, err))
+		}
+		return instance
+
+	default:
+		panic(fmt.Sprintf("unknown lifetime %s for type %v", binding.Lifetime, abstractT))
+	}
 }
 
 // resolutionContext tracks the current resolution path for circular dependency detection.
@@ -776,6 +804,47 @@ return &ValidationError{Errors: validationErrors}
 }
 
 return nil
+}
+
+// BindAutoWire registers a binding with automatic dependency injection enabled.
+// The instance will have its fields with `inject` tags automatically resolved.
+//
+// Example:
+//
+//	type Service struct {
+//	    Logger Logger `inject:""`
+//	}
+//	container.BindAutoWire((*ServiceInterface)(nil), &Service{})
+func (n *Nasc) BindAutoWire(abstractType, concreteType interface{}) error {
+	if abstractType == nil {
+		return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+	}
+	if concreteType == nil {
+		return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+	}
+
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
+
+	concreteT := reflect.TypeOf(concreteType)
+	if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+		// Valid pointer to struct
+	} else {
+		return &InvalidBindingError{
+			Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+		}
+	}
+
+	binding := &registry.Binding{
+		AbstractType:    abstractT,
+		ConcreteType:    concreteT,
+		Lifetime:        string(LifetimeTransient),
+		AutoWireEnabled: true,
+	}
+
+	return n.registry.Register(binding)
 }
 
 // MustMake is an explicit panic version of Make for cases where panic is desired.

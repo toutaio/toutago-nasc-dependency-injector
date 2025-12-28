@@ -1,7 +1,7 @@
 package nasc
 
 import (
-"testing"
+	"testing"
 )
 
 // Test service with dependencies
@@ -214,3 +214,4 @@ service := &ServiceWithDeps{}
 container.AutoWire(service)
 }
 }
+
