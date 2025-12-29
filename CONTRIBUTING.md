@@ -42,7 +42,7 @@ Thank you for considering contributing to Nasc! This document provides guideline
 
 4. **Write tests**
    - Unit tests for all new functionality
-   - Aim for >65% coverage (goal: >90%)
+   - Aim for >80% coverage (current: 80%)
    - Include table-driven tests where appropriate
    - Test error cases
 
@@ -95,11 +95,12 @@ All pull requests automatically run through our CI pipeline which includes:
 
 ### ✅ Required Checks
 
-1. **Tests** - Must pass on Go 1.21, 1.22, 1.23 across Linux, macOS, and Windows
+1. **Tests** - Must pass on Go 1.22.12, 1.23.10, 1.24.11 across Linux, macOS, and Windows
    - Includes race detector (`go test -race`)
    - 10-minute timeout per test suite
+   - Uses latest patch versions to avoid standard library vulnerabilities
 
-2. **Code Coverage** - Must maintain at least 65% coverage
+2. **Code Coverage** - Must maintain at least 80% coverage
    - Coverage reports available as artifacts
    - Goal is to increase coverage over time
 

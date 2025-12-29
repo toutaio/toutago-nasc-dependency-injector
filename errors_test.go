@@ -2,6 +2,7 @@ package nasc
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -369,5 +370,129 @@ func BenchmarkMakeSafe_WithDependencies(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		container.MakeSafe((*ServiceA)(nil))
+	}
+}
+
+// Additional error type tests for coverage
+
+func TestInvalidBindingError_Error(t *testing.T) {
+	err := &InvalidBindingError{Reason: "test reason"}
+	msg := err.Error()
+	if msg == "" {
+		t.Error("InvalidBindingError.Error() should return non-empty string")
+	}
+}
+
+func TestBindingNotFoundError_Error(t *testing.T) {
+	type TestType interface{}
+	err := &BindingNotFoundError{Type: reflect.TypeOf((*TestType)(nil)).Elem()}
+	msg := err.Error()
+	if msg == "" {
+		t.Error("BindingNotFoundError.Error() should return non-empty string")
+	}
+}
+
+func TestCircularDependencyError_Error(t *testing.T) {
+	err := &CircularDependencyError{Path: []string{"A", "B", "C"}}
+	msg := err.Error()
+	if msg == "" {
+		t.Error("CircularDependencyError.Error() should return non-empty string")
+	}
+
+	err2 := &CircularDependencyError{Path: []string{}}
+	msg2 := err2.Error()
+	if msg2 != "circular dependency detected" {
+		t.Errorf("CircularDependencyError.Error() with empty path = %v", msg2)
+	}
+}
+
+func TestResolutionError_Unwrap(t *testing.T) {
+	innerErr := errors.New("inner error")
+	type TestType interface{}
+	err := &ResolutionError{
+		Type:  reflect.TypeOf((*TestType)(nil)).Elem(),
+		Cause: innerErr,
+	}
+
+	unwrapped := err.Unwrap()
+	if unwrapped != innerErr {
+		t.Errorf("ResolutionError.Unwrap() = %v, want %v", unwrapped, innerErr)
+	}
+}
+
+func TestResolutionError_ErrorMessages(t *testing.T) {
+	type TestType interface{}
+	tests := []struct {
+		name string
+		err  *ResolutionError
+	}{
+		{
+			name: "with all fields",
+			err: &ResolutionError{
+				Type:    reflect.TypeOf((*TestType)(nil)).Elem(),
+				Name:    "testName",
+				Cause:   errors.New("cause error"),
+				Context: "context info",
+			},
+		},
+		{
+			name: "with nil type",
+			err: &ResolutionError{
+				Type:  nil,
+				Cause: errors.New("cause error"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := tt.err.Error()
+			if msg == "" {
+				t.Error("ResolutionError.Error() should return non-empty string")
+			}
+		})
+	}
+}
+
+func TestValidationError_Unwrap(t *testing.T) {
+	errs := []error{
+		errors.New("error 1"),
+		errors.New("error 2"),
+	}
+	err := &ValidationError{Errors: errs}
+
+	unwrapped := err.Unwrap()
+	if len(unwrapped) != 2 {
+		t.Errorf("ValidationError.Unwrap() returned %d errors, want 2", len(unwrapped))
+	}
+}
+
+func TestValidationError_ErrorMessages(t *testing.T) {
+	tests := []struct {
+		name   string
+		errors []error
+	}{
+		{"multiple errors", []error{errors.New("e1"), errors.New("e2")}},
+		{"single error", []error{errors.New("e1")}},
+		{"no errors", []error{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := &ValidationError{Errors: tt.errors}
+			msg := err.Error()
+			if msg == "" {
+				t.Error("ValidationError.Error() should return non-empty string")
+			}
+		})
+	}
+}
+
+func TestBindingAlreadyExistsError_Error(t *testing.T) {
+	type TestType interface{}
+	err := &BindingAlreadyExistsError{Type: reflect.TypeOf((*TestType)(nil)).Elem()}
+	msg := err.Error()
+	if msg == "" {
+		t.Error("BindingAlreadyExistsError.Error() should return non-empty string")
 	}
 }

@@ -2,6 +2,7 @@ package nasc
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 )
 
@@ -31,16 +32,6 @@ type failingDisposable struct{}
 
 func (f *failingDisposable) Dispose() error {
 	return errors.New("disposal failed")
-}
-
-type dependentService struct {
-	dependency *disposableService
-	disposed   bool
-}
-
-func (d *dependentService) Dispose() error {
-	d.disposed = true
-	return nil
 }
 
 // TestScopeIsolation verifies that scopes maintain isolated instance caches
@@ -297,4 +288,47 @@ func TestMultipleDisposablesInScope(t *testing.T) {
 	if !instanceB.disposed {
 		t.Error("Service B should be disposed")
 	}
+}
+
+// Additional scoped tests from phase2
+
+func TestScoped_SameWithinScope(t *testing.T) {
+	container := New()
+	container.Scoped((*disposableService)(nil), &disposableService{})
+
+	scope := container.CreateScope()
+	instance1 := scope.Make((*disposableService)(nil))
+	instance2 := scope.Make((*disposableService)(nil))
+
+	if fmt.Sprintf("%p", instance1) != fmt.Sprintf("%p", instance2) {
+		t.Error("Scoped returned different instances within same scope")
+	}
+}
+
+func TestScoped_DifferentAcrossScopes(t *testing.T) {
+	container := New()
+	container.Scoped((*disposableService)(nil), &disposableService{})
+
+	scope1 := container.CreateScope()
+	scope2 := container.CreateScope()
+
+	instance1 := scope1.Make((*disposableService)(nil))
+	instance2 := scope2.Make((*disposableService)(nil))
+
+	if fmt.Sprintf("%p", instance1) == fmt.Sprintf("%p", instance2) {
+		t.Error("Scoped returned same instance across different scopes")
+	}
+}
+
+func TestScoped_PanicsFromRootContainer(t *testing.T) {
+	container := New()
+	container.Scoped((*disposableService)(nil), &disposableService{})
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic when resolving scoped from root")
+		}
+	}()
+
+	container.Make((*disposableService)(nil))
 }

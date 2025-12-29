@@ -1,8 +1,13 @@
 package nasc
 
 import (
+	"errors"
+	"fmt"
+	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/toutaio/toutago-nasc-dependency-injector/registry"
 )
 
 // Test interfaces and implementations
@@ -192,5 +197,208 @@ func BenchmarkMake(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		container.Make((*Logger)(nil))
+	}
+}
+
+// Additional core functionality tests
+
+func TestLifetime_String(t *testing.T) {
+	tests := []struct {
+		lifetime Lifetime
+		want     string
+	}{
+		{LifetimeTransient, "transient"},
+		{LifetimeSingleton, "singleton"},
+		{LifetimeScoped, "scoped"},
+		{LifetimeFactory, "factory"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			got := tt.lifetime.String()
+			if got != tt.want {
+				t.Errorf("Lifetime.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFactoryErrorHandling(t *testing.T) {
+	c := New()
+
+	type Service struct{}
+
+	factory := func(n *Nasc) (interface{}, error) {
+		return nil, errors.New("factory error")
+	}
+
+	c.Factory((*Service)(nil), factory)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic from factory error")
+		}
+	}()
+
+	c.Make((*Service)(nil))
+}
+
+func TestInvalidFactoryType(t *testing.T) {
+	c := New()
+
+	type Service struct{}
+
+	c.registry.Register(&registry.Binding{
+		AbstractType: reflect.TypeOf((*Service)(nil)).Elem(),
+		ConcreteType: reflect.TypeOf(&Service{}),
+		Lifetime:     string(LifetimeFactory),
+		Factory:      "not a function",
+	})
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic from invalid factory")
+		}
+	}()
+
+	c.Make((*Service)(nil))
+}
+
+func TestUnknownLifetime(t *testing.T) {
+	c := New()
+
+	type Service struct{}
+
+	c.registry.Register(&registry.Binding{
+		AbstractType: reflect.TypeOf((*Service)(nil)).Elem(),
+		ConcreteType: reflect.TypeOf(&Service{}),
+		Lifetime:     "unknown-lifetime",
+	})
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic from unknown lifetime")
+		}
+	}()
+
+	c.Make((*Service)(nil))
+}
+
+func TestReflectionCache_Clear(t *testing.T) {
+	cache := newReflectionCache()
+
+	type TestStruct struct {
+		Field string
+	}
+
+	testType := reflect.TypeOf(TestStruct{})
+	cache.getFieldInfo(testType)
+
+	cache.clear()
+
+	fields := cache.getFieldInfo(testType)
+	if len(fields) != 1 {
+		t.Errorf("Cache should still work after clear, got %d fields", len(fields))
+	}
+}
+
+// Singleton lifetime tests
+
+func TestSingleton_ReturnsSameInstance(t *testing.T) {
+	container := New()
+	container.Singleton((*Logger)(nil), &ConsoleLogger{})
+
+	instance1 := container.Make((*Logger)(nil))
+	instance2 := container.Make((*Logger)(nil))
+
+	if fmt.Sprintf("%p", instance1) != fmt.Sprintf("%p", instance2) {
+		t.Error("Singleton returned different instances")
+	}
+}
+
+func TestSingleton_ThreadSafe(t *testing.T) {
+	container := New()
+	container.Singleton((*Logger)(nil), &ConsoleLogger{})
+
+	var wg sync.WaitGroup
+	instances := make([]interface{}, 50)
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		i := i
+		go func() {
+			defer wg.Done()
+			instances[i] = container.Make((*Logger)(nil))
+		}()
+	}
+
+	wg.Wait()
+
+	first := fmt.Sprintf("%p", instances[0])
+	for i := 1; i < 50; i++ {
+		if fmt.Sprintf("%p", instances[i]) != first {
+			t.Errorf("Instance %d is different", i)
+			break
+		}
+	}
+}
+
+// Factory lifetime tests
+
+func TestFactory_CalledEachTime(t *testing.T) {
+	container := New()
+	callCount := 0
+
+	factory := func(c *Nasc) (interface{}, error) {
+		callCount++
+		return &ConsoleLogger{}, nil
+	}
+
+	container.Factory((*Logger)(nil), factory)
+
+	container.Make((*Logger)(nil))
+	container.Make((*Logger)(nil))
+	container.Make((*Logger)(nil))
+
+	if callCount != 3 {
+		t.Errorf("Factory called %d times, expected 3", callCount)
+	}
+}
+
+func TestFactory_ReturnsNewInstances(t *testing.T) {
+	container := New()
+
+	factory := func(c *Nasc) (interface{}, error) {
+		return &ConsoleLogger{}, nil
+	}
+
+	container.Factory((*Logger)(nil), factory)
+
+	instance1 := container.Make((*Logger)(nil))
+	instance2 := container.Make((*Logger)(nil))
+
+	if fmt.Sprintf("%p", instance1) == fmt.Sprintf("%p", instance2) {
+		t.Error("Factory should return different instances")
+	}
+}
+
+func TestFactory_ReceivesContainer(t *testing.T) {
+	container := New()
+	container.Singleton((*Database)(nil), &MockDB{})
+
+	receivedContainer := false
+	factory := func(c *Nasc) (interface{}, error) {
+		if c != nil {
+			receivedContainer = true
+			c.Make((*Database)(nil))
+		}
+		return &ConsoleLogger{}, nil
+	}
+
+	container.Factory((*Logger)(nil), factory)
+	container.Make((*Logger)(nil))
+
+	if !receivedContainer {
+		t.Error("Factory did not receive container")
 	}
 }

@@ -232,3 +232,344 @@ func TestConcurrentReadsAndWrites(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestRegisterNamed_Success(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+	concreteType := reflect.TypeOf(&testImplementation{})
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: concreteType,
+		Name:         "myImplementation",
+	}
+
+	err := reg.RegisterNamed(binding)
+	if err != nil {
+		t.Errorf("RegisterNamed() returned error: %v", err)
+	}
+}
+
+func TestRegisterNamed_NilBinding(t *testing.T) {
+	reg := New()
+	err := reg.RegisterNamed(nil)
+	if err == nil {
+		t.Error("RegisterNamed(nil) should return error")
+	}
+}
+
+func TestRegisterNamed_EmptyName(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+	concreteType := reflect.TypeOf(&testImplementation{})
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: concreteType,
+		Name:         "",
+	}
+
+	err := reg.RegisterNamed(binding)
+	if err == nil {
+		t.Error("RegisterNamed() should return error for empty name")
+	}
+}
+
+func TestRegisterNamed_Duplicate(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+	concreteType := reflect.TypeOf(&testImplementation{})
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: concreteType,
+		Name:         "duplicate",
+	}
+
+	err := reg.RegisterNamed(binding)
+	if err != nil {
+		t.Fatalf("First RegisterNamed() failed: %v", err)
+	}
+
+	err = reg.RegisterNamed(binding)
+	if err == nil {
+		t.Error("RegisterNamed() should return error for duplicate name")
+	}
+}
+
+func TestGetNamed_Success(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+	concreteType := reflect.TypeOf(&testImplementation{})
+
+	expected := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: concreteType,
+		Name:         "myImplementation",
+	}
+
+	reg.RegisterNamed(expected)
+
+	got, err := reg.GetNamed(interfaceType, "myImplementation")
+	if err != nil {
+		t.Fatalf("GetNamed() returned error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("GetNamed() returned nil binding")
+	}
+	if got.Name != expected.Name {
+		t.Errorf("Name mismatch: got %v, want %v", got.Name, expected.Name)
+	}
+}
+
+func TestGetNamed_NotFound(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	_, err := reg.GetNamed(interfaceType, "nonexistent")
+	if err == nil {
+		t.Error("GetNamed() should return error for non-existent binding")
+	}
+}
+
+func TestGetNamed_TypeNotFound(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+	otherType := reflect.TypeOf("")
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Name:         "test",
+	}
+	reg.RegisterNamed(binding)
+
+	_, err := reg.GetNamed(otherType, "test")
+	if err == nil {
+		t.Error("GetNamed() should return error for non-existent type")
+	}
+}
+
+func TestGetAll_UnnamedOnly(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+	}
+	reg.Register(binding)
+
+	result := reg.GetAll(interfaceType)
+	if len(result) != 1 {
+		t.Errorf("GetAll() returned %d bindings, want 1", len(result))
+	}
+}
+
+func TestGetAll_NamedOnly(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	binding1 := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Name:         "impl1",
+	}
+	binding2 := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Name:         "impl2",
+	}
+
+	reg.RegisterNamed(binding1)
+	reg.RegisterNamed(binding2)
+
+	result := reg.GetAll(interfaceType)
+	if len(result) != 2 {
+		t.Errorf("GetAll() returned %d bindings, want 2", len(result))
+	}
+}
+
+func TestGetAll_MixedUnnamedAndNamed(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	unnamed := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+	}
+	named := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Name:         "named",
+	}
+
+	reg.Register(unnamed)
+	reg.RegisterNamed(named)
+
+	result := reg.GetAll(interfaceType)
+	if len(result) != 2 {
+		t.Errorf("GetAll() returned %d bindings, want 2", len(result))
+	}
+}
+
+func TestGetAll_NotFound(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	result := reg.GetAll(interfaceType)
+	if len(result) != 0 {
+		t.Errorf("GetAll() returned %d bindings, want 0", len(result))
+	}
+}
+
+func TestGetByTag_Found(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	binding1 := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Tags:         []string{"tag1", "tag2"},
+	}
+	binding2 := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Tags:         []string{"tag2", "tag3"},
+		Name:         "named",
+	}
+
+	reg.Register(binding1)
+	reg.RegisterNamed(binding2)
+
+	result := reg.GetByTag("tag2")
+	if len(result) != 2 {
+		t.Errorf("GetByTag() returned %d bindings, want 2", len(result))
+	}
+}
+
+func TestGetByTag_NotFound(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Tags:         []string{"tag1"},
+	}
+	reg.Register(binding)
+
+	result := reg.GetByTag("nonexistent")
+	if len(result) != 0 {
+		t.Errorf("GetByTag() returned %d bindings, want 0", len(result))
+	}
+}
+
+func TestGetAllTypes(t *testing.T) {
+	reg := New()
+	type1 := reflect.TypeOf((*testInterface)(nil)).Elem()
+	type2 := reflect.TypeOf("")
+
+	binding1 := &Binding{
+		AbstractType: type1,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+	}
+	binding2 := &Binding{
+		AbstractType: type2,
+		ConcreteType: reflect.TypeOf(""),
+	}
+
+	reg.Register(binding1)
+	reg.Register(binding2)
+
+	types := reg.GetAllTypes()
+	if len(types) != 2 {
+		t.Errorf("GetAllTypes() returned %d types, want 2", len(types))
+	}
+}
+
+func TestGetAllTypes_Empty(t *testing.T) {
+	reg := New()
+	types := reg.GetAllTypes()
+	if len(types) != 0 {
+		t.Errorf("GetAllTypes() returned %d types, want 0", len(types))
+	}
+}
+
+func TestGetAllNamedFor_Success(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	binding1 := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Name:         "impl1",
+	}
+	binding2 := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+		Name:         "impl2",
+	}
+
+	reg.RegisterNamed(binding1)
+	reg.RegisterNamed(binding2)
+
+	names := reg.GetAllNamedFor(interfaceType)
+	if len(names) != 2 {
+		t.Errorf("GetAllNamedFor() returned %d names, want 2", len(names))
+	}
+}
+
+func TestGetAllNamedFor_NotFound(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	names := reg.GetAllNamedFor(interfaceType)
+	if names != nil {
+		t.Errorf("GetAllNamedFor() should return nil for non-existent type")
+	}
+}
+
+func TestHasUnnamedBinding_True(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	binding := &Binding{
+		AbstractType: interfaceType,
+		ConcreteType: reflect.TypeOf(&testImplementation{}),
+	}
+	reg.Register(binding)
+
+	if !reg.HasUnnamedBinding(interfaceType) {
+		t.Error("HasUnnamedBinding() should return true")
+	}
+}
+
+func TestHasUnnamedBinding_False(t *testing.T) {
+	reg := New()
+	interfaceType := reflect.TypeOf((*testInterface)(nil)).Elem()
+
+	if reg.HasUnnamedBinding(interfaceType) {
+		t.Error("HasUnnamedBinding() should return false")
+	}
+}
+
+func TestBindingAlreadyExistsError_Error(t *testing.T) {
+	err := &BindingAlreadyExistsError{
+		Type: reflect.TypeOf((*testInterface)(nil)).Elem(),
+	}
+	msg := err.Error()
+	if msg == "" {
+		t.Error("Error() should return non-empty string")
+	}
+}
+
+func TestBindingNotFoundError_Error(t *testing.T) {
+	err := &BindingNotFoundError{
+		Type: reflect.TypeOf((*testInterface)(nil)).Elem(),
+	}
+	msg := err.Error()
+	if msg == "" {
+		t.Error("Error() should return non-empty string")
+	}
+}

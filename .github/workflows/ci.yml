@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go: ['1.21', '1.22', '1.23']
+        go: ['1.22.12', '1.23.10', '1.24.11']
     
     steps:
       - name: Checkout code
@@ -51,7 +51,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.11'
           cache: true
       
       - name: Run tests with coverage
@@ -64,13 +64,17 @@ jobs:
       
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          # Get the last "total" line which represents overall coverage
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | tail -1 | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 65" | bc -l) )); then
-            echo "❌ Coverage ${COVERAGE}% is below threshold of 65%"
+          
+          # Use awk for floating point comparison (works everywhere)
+          if awk "BEGIN {exit !($COVERAGE < 80)}"; then
+            echo "❌ Coverage ${COVERAGE}% is below threshold of 80%"
             exit 1
           fi
-          echo "✅ Coverage ${COVERAGE}% meets threshold of 65%"
+          
+          echo "✅ Coverage ${COVERAGE}% meets threshold of 80%"
       
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
@@ -94,7 +98,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.11'
           cache: true
       
       - name: Install govulncheck
@@ -115,7 +119,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.11'
           cache: true
       
       - name: Check formatting
@@ -162,7 +166,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.11'
           cache: true
       
       - name: Build
@@ -184,7 +188,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.11'
           cache: true
       
       - name: Run benchmarks
@@ -210,7 +214,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.24.11'
           cache: true
       
       - name: Install go-licenses

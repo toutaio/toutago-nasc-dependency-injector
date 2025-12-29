@@ -214,3 +214,46 @@ func BenchmarkAutoWire(b *testing.B) {
 		container.AutoWire(service)
 	}
 }
+
+// Additional autowire tests
+
+func TestBindAutoWire_Success(t *testing.T) {
+	type TestService struct {
+		Value string
+	}
+
+	c := New()
+
+	err := c.BindAutoWire((*TestService)(nil), &TestService{})
+	if err != nil {
+		t.Errorf("BindAutoWire() error = %v", err)
+	}
+
+	resolved := c.Make((*TestService)(nil)).(*TestService)
+	if resolved == nil {
+		t.Error("Resolved instance should not be nil")
+	}
+}
+
+func TestBindAutoWire_Errors(t *testing.T) {
+	c := New()
+
+	// Nil abstract type
+	err := c.BindAutoWire(nil, &struct{}{})
+	if err == nil {
+		t.Error("BindAutoWire(nil, ...) should return error")
+	}
+
+	// Nil concrete type
+	type TestType interface{}
+	err = c.BindAutoWire((*TestType)(nil), nil)
+	if err == nil {
+		t.Error("BindAutoWire(..., nil) should return error")
+	}
+
+	// Non-struct concrete type
+	err = c.BindAutoWire((*TestType)(nil), "string")
+	if err == nil {
+		t.Error("BindAutoWire with non-struct should return error")
+	}
+}

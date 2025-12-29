@@ -200,12 +200,3 @@ func (n *Nasc) injectField(field autoWireFieldInfo) error {
 	field.fieldValue.Set(resolvedValue)
 	return nil
 }
-
-// autoWireInstance is a helper that auto-wires an instance if auto-wiring is enabled.
-// This is called internally after creating instances.
-func (n *Nasc) autoWireInstance(instance interface{}, autoWireEnabled bool) error {
-	if !autoWireEnabled {
-		return nil
-	}
-	return n.AutoWire(instance)
-}

@@ -182,7 +182,7 @@ go test -race ./...
 
 **Error Message:**
 ```
-❌ Coverage 63.2% is below threshold of 65%
+❌ Coverage 63.2% is below threshold of 80%
 ```
 
 **Fix:**
@@ -208,7 +208,7 @@ go test -race ./...
    }
    ```
 
-**Current threshold:** 65% (goal is to increase over time)
+**Current threshold:** 80% (goal is to increase over time)
 
 ---
 

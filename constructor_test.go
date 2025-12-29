@@ -257,3 +257,45 @@ func BenchmarkConstructorInvocation(b *testing.B) {
 		container.Make((*ConstructorService)(nil))
 	}
 }
+
+// Additional constructor error handling tests
+
+func TestConstructorErrors(t *testing.T) {
+	c := New()
+
+	type Service struct{}
+
+	errorConstructor := func() (*Service, error) {
+		return nil, errors.New("construction failed")
+	}
+
+	c.BindConstructor((*Service)(nil), errorConstructor)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic from constructor error")
+		}
+	}()
+
+	c.Make((*Service)(nil))
+}
+
+func TestSingletonConstructorError(t *testing.T) {
+	c := New()
+
+	type Service struct{}
+
+	errorConstructor := func() (*Service, error) {
+		return nil, errors.New("singleton construction failed")
+	}
+
+	c.SingletonConstructor((*Service)(nil), errorConstructor)
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic from singleton constructor error")
+		}
+	}()
+
+	c.Make((*Service)(nil))
+}
