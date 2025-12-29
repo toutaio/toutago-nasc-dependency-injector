@@ -124,9 +124,9 @@ jobs:
       
       - name: Check formatting
         run: |
-          if [ -n "$(gofmt -l .)" ]; then
-            echo "❌ Code is not formatted. Please run: gofmt -w ."
-            gofmt -d .
+          if [ -n "$(gofmt -s -l .)" ]; then
+            echo "❌ Code is not formatted. Please run: gofmt -s -w ."
+            gofmt -s -d .
             exit 1
           fi
           echo "✅ Code is properly formatted"
@@ -139,6 +139,19 @@ jobs:
       
       - name: Run staticcheck
         run: staticcheck ./...
+      
+      - name: Install gocyclo
+        run: go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+      
+      - name: Check cyclomatic complexity
+        run: |
+          COMPLEX=$(gocyclo -over 15 . | wc -l)
+          if [ "$COMPLEX" -gt 0 ]; then
+            echo "❌ Found functions with cyclomatic complexity > 15:"
+            gocyclo -over 15 .
+            exit 1
+          fi
+          echo "✅ All functions have acceptable complexity"
       
       - name: Verify go.mod is tidy
         run: |
