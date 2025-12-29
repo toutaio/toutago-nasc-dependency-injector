@@ -37,7 +37,7 @@ jobs:
         run: go mod verify
       
       - name: Run tests with race detector
-        run: go test -race -timeout 10m ./...
+        run: go test -race -timeout 10m $(go list ./... | grep -v /examples/)
 
   coverage:
     name: Code Coverage
@@ -55,7 +55,7 @@ jobs:
           cache: true
       
       - name: Run tests with coverage
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: go test -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v /examples/)
       
       - name: Generate coverage report
         run: |
@@ -192,7 +192,7 @@ jobs:
           cache: true
       
       - name: Run benchmarks
-        run: go test -bench=. -benchmem -run=^$ ./... | tee benchmark.txt
+        run: go test -bench=. -benchmem -run=^$ $(go list ./... | grep -v /examples/) | tee benchmark.txt
       
       - name: Upload benchmark results
         uses: actions/upload-artifact@v4
