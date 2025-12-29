@@ -19,12 +19,12 @@ type ConstructorFunc interface{}
 
 // constructorInfo holds metadata about a constructor function.
 type constructorInfo struct {
-	fn            reflect.Value
-	fnType        reflect.Type
-	paramTypes    []reflect.Type
-	returnsError  bool
-	returnType    reflect.Type
-	numParams     int
+	fn           reflect.Value
+	fnType       reflect.Type
+	paramTypes   []reflect.Type
+	returnsError bool
+	returnType   reflect.Type
+	numParams    int
 }
 
 // parseConstructor analyzes a constructor function and extracts metadata.

@@ -89,7 +89,7 @@ func TestChildScopeInheritance(t *testing.T) {
 // TestDisposalOrder verifies that instances are disposed in reverse creation order
 func TestDisposalOrder(t *testing.T) {
 	container := New()
-	
+
 	type serviceA struct{}
 	type serviceB struct{}
 
@@ -97,7 +97,7 @@ func TestDisposalOrder(t *testing.T) {
 	container.Scoped((*serviceB)(nil), &serviceB{})
 
 	scope := container.CreateScope()
-	
+
 	// Create instances in order A, B
 	scope.Make((*serviceA)(nil))
 	scope.Make((*serviceB)(nil))
@@ -119,7 +119,7 @@ func TestInitializableInterface(t *testing.T) {
 	defer scope.Dispose()
 
 	instance := scope.Make((*initializableService)(nil)).(*initializableService)
-	
+
 	if !instance.initialized {
 		t.Error("Expected Initialize to be called")
 	}
@@ -252,7 +252,7 @@ func TestTransientLifetimeWithInitialize(t *testing.T) {
 	defer scope.Dispose()
 
 	instance := scope.Make((*initializableService)(nil)).(*initializableService)
-	
+
 	if !instance.initialized {
 		t.Error("Expected Initialize to be called on transient instance")
 	}
@@ -285,7 +285,7 @@ func TestMultipleDisposablesInScope(t *testing.T) {
 	container.Scoped((*serviceB)(nil), &serviceB{})
 
 	scope := container.CreateScope()
-	
+
 	instanceA := scope.Make((*serviceA)(nil)).(*serviceA)
 	instanceB := scope.Make((*serviceB)(nil)).(*serviceB)
 

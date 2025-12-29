@@ -78,7 +78,7 @@ func BenchmarkTransientResolution(b *testing.B) {
 func BenchmarkConstructorResolution(b *testing.B) {
 	container := New()
 	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
-	
+
 	err := container.BindConstructor((*BenchDatabase)(nil), func(logger BenchLogger) *BenchPostgresDB {
 		return &BenchPostgresDB{Logger: logger}
 	})
@@ -144,7 +144,7 @@ func BenchmarkReflectionCache(b *testing.B) {
 // BenchmarkFactoryResolution benchmarks factory function performance.
 func BenchmarkFactoryResolution(b *testing.B) {
 	container := New()
-	
+
 	err := container.Factory((*BenchLogger)(nil), func(c *Nasc) (interface{}, error) {
 		return &BenchConsoleLogger{prefix: "factory"}, nil
 	})
@@ -163,7 +163,7 @@ func BenchmarkFactoryResolution(b *testing.B) {
 // BenchmarkNamedResolution benchmarks named binding resolution.
 func BenchmarkNamedResolution(b *testing.B) {
 	container := New()
-	
+
 	err := container.BindNamed((*BenchLogger)(nil), &BenchConsoleLogger{prefix: "file"}, "file")
 	if err != nil {
 		b.Fatal(err)
@@ -195,7 +195,7 @@ func BenchmarkScopedResolution(b *testing.B) {
 // BenchmarkDeepDependencyGraph benchmarks complex dependency resolution.
 func BenchmarkDeepDependencyGraph(b *testing.B) {
 	container := New()
-	
+
 	// Build a dependency graph
 	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
 	container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
@@ -212,7 +212,7 @@ func BenchmarkDeepDependencyGraph(b *testing.B) {
 // BenchmarkMakeAllResolution benchmarks MakeAll performance.
 func BenchmarkMakeAllResolution(b *testing.B) {
 	container := New()
-	
+
 	for i := 0; i < 10; i++ {
 		name := fmt.Sprintf("logger%d", i)
 		container.BindNamed((*BenchLogger)(nil), &BenchConsoleLogger{prefix: name}, name)
@@ -234,11 +234,11 @@ func BenchmarkConcurrentSingletonCreation(b *testing.B) {
 		b.StopTimer()
 		container := New()
 		container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
-		
+
 		var wg sync.WaitGroup
 		goroutines := 100
 		wg.Add(goroutines)
-		
+
 		b.StartTimer()
 		for j := 0; j < goroutines; j++ {
 			go func() {

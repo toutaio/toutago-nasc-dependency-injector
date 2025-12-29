@@ -117,7 +117,7 @@ func (n *Nasc) RegisterProvider(provider ServiceProvider) error {
 //
 //	container.RegisterProvider(&DatabaseProvider{})
 //	container.RegisterProvider(&CacheProvider{})
-//	
+//
 //	// Boot all providers
 //	if err := container.BootProviders(); err != nil {
 //	    log.Fatal(err)

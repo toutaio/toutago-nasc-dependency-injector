@@ -118,7 +118,7 @@ func (s *DefaultUserService) GetAllUsers() ([]string, error) {
 }
 
 func main() {
-	fmt.Println("=== Nasc Basic Example ===\n")
+	fmt.Println("=== Nasc Basic Example ===")
 
 	// Example 1: Simple binding and resolution
 	example1()

@@ -44,16 +44,16 @@ type Initializable interface {
 //
 //	scope := container.CreateScope()
 //	defer scope.Dispose()
-//	
+//
 //	// Scoped instances are unique to this scope
 //	uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
 type Scope struct {
-	parent         *Nasc
-	instances      map[reflect.Type]interface{}
-	creationOrder  []interface{} // Track order for reverse disposal
-	children       []*Scope
-	disposed       bool
-	mu             sync.RWMutex
+	parent        *Nasc
+	instances     map[reflect.Type]interface{}
+	creationOrder []interface{} // Track order for reverse disposal
+	children      []*Scope
+	disposed      bool
+	mu            sync.RWMutex
 }
 
 // newScope creates a new scope with the given parent container.
@@ -141,14 +141,14 @@ func (s *Scope) Make(abstractType interface{}) interface{} {
 	case LifetimeTransient:
 		// Create new instance (don't cache)
 		instance := s.createInstance(binding, abstractT)
-		
+
 		// Initialize if implements Initializable
 		if initializable, ok := instance.(Initializable); ok {
 			if err := initializable.Initialize(); err != nil {
 				panic(fmt.Sprintf("failed to initialize instance of type %v: %v", abstractT, err))
 			}
 		}
-		
+
 		return instance
 
 	default:
@@ -177,7 +177,7 @@ func (s *Scope) createInstance(binding *registry.Binding, abstractT reflect.Type
 //
 //	parentScope := container.CreateScope()
 //	defer parentScope.Dispose()
-//	
+//
 //	childScope := parentScope.CreateChildScope()
 //	// Child will be disposed with parent
 func (s *Scope) CreateChildScope() *Scope {

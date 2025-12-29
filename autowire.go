@@ -172,7 +172,7 @@ func (n *Nasc) injectField(field autoWireFieldInfo) error {
 				resolveErr = fmt.Errorf("resolution panicked: %v", r)
 			}
 		}()
-		
+
 		// Check if this is a named dependency
 		if field.options.name != "" {
 			resolved = n.MakeNamed(typeToken, field.options.name)

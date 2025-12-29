@@ -42,16 +42,16 @@ Thank you for considering contributing to Nasc! This document provides guideline
 
 4. **Write tests**
    - Unit tests for all new functionality
-   - Aim for >90% coverage
+   - Aim for >65% coverage (goal: >90%)
    - Include table-driven tests where appropriate
    - Test error cases
 
-5. **Run tests**
+5. **Run tests locally**
    ```bash
    # All tests
    go test ./...
    
-   # With race detector
+   # With race detector (required before submitting)
    go test -race ./...
    
    # With coverage
@@ -60,8 +60,9 @@ Thank you for considering contributing to Nasc! This document provides guideline
 
 6. **Format and lint**
    ```bash
-   go fmt ./...
+   gofmt -w .
    go vet ./...
+   go mod tidy
    ```
 
 7. **Commit your changes**
@@ -87,6 +88,72 @@ Thank you for considering contributing to Nasc! This document provides guideline
    - Reference any related issues
    - Include before/after behavior
    - List any breaking changes
+
+## Continuous Integration
+
+All pull requests automatically run through our CI pipeline which includes:
+
+### ✅ Required Checks
+
+1. **Tests** - Must pass on Go 1.21, 1.22, 1.23 across Linux, macOS, and Windows
+   - Includes race detector (`go test -race`)
+   - 10-minute timeout per test suite
+
+2. **Code Coverage** - Must maintain at least 65% coverage
+   - Coverage reports available as artifacts
+   - Goal is to increase coverage over time
+
+3. **Security Scan** - No known vulnerabilities
+   - Uses `govulncheck` to scan dependencies
+   - Checks against Go vulnerability database
+
+4. **Code Quality** - All checks must pass
+   - `gofmt` - Code must be properly formatted
+   - `go vet` - Static analysis must pass
+   - `staticcheck` - Advanced linting must pass
+   - `go mod tidy` - Dependencies must be tidy
+
+5. **Build Verification** - Must build on all platforms
+   - Linux, macOS, Windows builds required
+
+6. **Benchmarks** - Performance benchmarks run (informational)
+   - Results saved as artifacts for comparison
+
+### 🔍 CI Troubleshooting
+
+**Formatting failures:**
+```bash
+gofmt -w .
+git add .
+git commit -m "fix: format code"
+```
+
+**Race detector failures:**
+```bash
+go test -race ./...  # Run locally to reproduce
+```
+
+**Coverage below threshold:**
+```bash
+go test -cover ./...  # Check current coverage
+# Add tests for uncovered code paths
+```
+
+**Security vulnerabilities:**
+```bash
+go install golang.org/x/vuln/cmd/govulncheck@latest
+govulncheck ./...
+# Update vulnerable dependencies
+```
+
+**Linting failures:**
+```bash
+go install honnef.co/go/tools/cmd/staticcheck@latest
+staticcheck ./...
+# Fix reported issues
+```
+
+All checks must pass before a PR can be merged. The CI results will appear directly on your pull request.
 
 ## Development Setup
 

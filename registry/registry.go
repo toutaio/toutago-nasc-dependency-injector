@@ -128,28 +128,28 @@ func (e *BindingNotFoundError) Error() string {
 //
 // This method is goroutine-safe.
 func (r *Registry) RegisterNamed(binding *Binding) error {
-if binding == nil {
-return fmt.Errorf("binding cannot be nil")
-}
-if binding.Name == "" {
-return fmt.Errorf("named binding must have a name")
-}
+	if binding == nil {
+		return fmt.Errorf("binding cannot be nil")
+	}
+	if binding.Name == "" {
+		return fmt.Errorf("named binding must have a name")
+	}
 
-r.mu.Lock()
-defer r.mu.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-// Initialize nested map if needed
-if r.namedBindings[binding.AbstractType] == nil {
-r.namedBindings[binding.AbstractType] = make(map[string]*Binding)
-}
+	// Initialize nested map if needed
+	if r.namedBindings[binding.AbstractType] == nil {
+		r.namedBindings[binding.AbstractType] = make(map[string]*Binding)
+	}
 
-// Check for duplicate name
-if _, exists := r.namedBindings[binding.AbstractType][binding.Name]; exists {
-return fmt.Errorf("named binding '%s' for type %v already exists", binding.Name, binding.AbstractType)
-}
+	// Check for duplicate name
+	if _, exists := r.namedBindings[binding.AbstractType][binding.Name]; exists {
+		return fmt.Errorf("named binding '%s' for type %v already exists", binding.Name, binding.AbstractType)
+	}
 
-r.namedBindings[binding.AbstractType][binding.Name] = binding
-return nil
+	r.namedBindings[binding.AbstractType][binding.Name] = binding
+	return nil
 }
 
 // GetNamed retrieves a binding by type and name.
@@ -158,20 +158,20 @@ return nil
 //
 // This method is goroutine-safe.
 func (r *Registry) GetNamed(abstractType reflect.Type, name string) (*Binding, error) {
-r.mu.RLock()
-defer r.mu.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-typeBindings, exists := r.namedBindings[abstractType]
-if !exists {
-return nil, &BindingNotFoundError{Type: abstractType}
-}
+	typeBindings, exists := r.namedBindings[abstractType]
+	if !exists {
+		return nil, &BindingNotFoundError{Type: abstractType}
+	}
 
-binding, exists := typeBindings[name]
-if !exists {
-return nil, fmt.Errorf("named binding '%s' for type %v not found", name, abstractType)
-}
+	binding, exists := typeBindings[name]
+	if !exists {
+		return nil, fmt.Errorf("named binding '%s' for type %v not found", name, abstractType)
+	}
 
-return binding, nil
+	return binding, nil
 }
 
 // GetAll returns all bindings for a given type (both named and unnamed).
@@ -179,24 +179,24 @@ return binding, nil
 //
 // This method is goroutine-safe.
 func (r *Registry) GetAll(abstractType reflect.Type) []*Binding {
-r.mu.RLock()
-defer r.mu.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-var result []*Binding
+	var result []*Binding
 
-// Add default binding if exists
-if binding, exists := r.bindings[abstractType]; exists {
-result = append(result, binding)
-}
+	// Add default binding if exists
+	if binding, exists := r.bindings[abstractType]; exists {
+		result = append(result, binding)
+	}
 
-// Add all named bindings
-if namedBindings, exists := r.namedBindings[abstractType]; exists {
-for _, binding := range namedBindings {
-result = append(result, binding)
-}
-}
+	// Add all named bindings
+	if namedBindings, exists := r.namedBindings[abstractType]; exists {
+		for _, binding := range namedBindings {
+			result = append(result, binding)
+		}
+	}
 
-return result
+	return result
 }
 
 // GetByTag returns all bindings that have the specified tag.
@@ -204,89 +204,89 @@ return result
 //
 // This method is goroutine-safe.
 func (r *Registry) GetByTag(tag string) []*Binding {
-r.mu.RLock()
-defer r.mu.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-var result []*Binding
+	var result []*Binding
 
-// Check unnamed bindings
-for _, binding := range r.bindings {
-if containsTag(binding.Tags, tag) {
-result = append(result, binding)
-}
-}
+	// Check unnamed bindings
+	for _, binding := range r.bindings {
+		if containsTag(binding.Tags, tag) {
+			result = append(result, binding)
+		}
+	}
 
-// Check named bindings
-for _, namedMap := range r.namedBindings {
-for _, binding := range namedMap {
-if containsTag(binding.Tags, tag) {
-result = append(result, binding)
-}
-}
-}
+	// Check named bindings
+	for _, namedMap := range r.namedBindings {
+		for _, binding := range namedMap {
+			if containsTag(binding.Tags, tag) {
+				result = append(result, binding)
+			}
+		}
+	}
 
-return result
+	return result
 }
 
 // containsTag checks if a tag exists in a slice of tags.
 func containsTag(tags []string, tag string) bool {
-for _, t := range tags {
-if t == tag {
-return true
-}
-}
-return false
+	for _, t := range tags {
+		if t == tag {
+			return true
+		}
+	}
+	return false
 }
 
 // GetAllTypes returns all types that have bindings (named or unnamed).
 func (r *Registry) GetAllTypes() []reflect.Type {
-r.mu.RLock()
-defer r.mu.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-typeSet := make(map[reflect.Type]bool)
+	typeSet := make(map[reflect.Type]bool)
 
-// Add unnamed binding types
-for abstractType := range r.bindings {
-typeSet[abstractType] = true
-}
+	// Add unnamed binding types
+	for abstractType := range r.bindings {
+		typeSet[abstractType] = true
+	}
 
-// Add named binding types
-for abstractType := range r.namedBindings {
-typeSet[abstractType] = true
-}
+	// Add named binding types
+	for abstractType := range r.namedBindings {
+		typeSet[abstractType] = true
+	}
 
-// Convert to slice
-types := make([]reflect.Type, 0, len(typeSet))
-for t := range typeSet {
-types = append(types, t)
-}
+	// Convert to slice
+	types := make([]reflect.Type, 0, len(typeSet))
+	for t := range typeSet {
+		types = append(types, t)
+	}
 
-return types
+	return types
 }
 
 // GetAllNamedFor returns all names for a given type.
 func (r *Registry) GetAllNamedFor(abstractType reflect.Type) []string {
-r.mu.RLock()
-defer r.mu.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-namedMap, exists := r.namedBindings[abstractType]
-if !exists {
-return nil
-}
+	namedMap, exists := r.namedBindings[abstractType]
+	if !exists {
+		return nil
+	}
 
-names := make([]string, 0, len(namedMap))
-for name := range namedMap {
-names = append(names, name)
-}
+	names := make([]string, 0, len(namedMap))
+	for name := range namedMap {
+		names = append(names, name)
+	}
 
-return names
+	return names
 }
 
 // HasUnnamedBinding checks if there's an unnamed binding for a type.
 func (r *Registry) HasUnnamedBinding(abstractType reflect.Type) bool {
-r.mu.RLock()
-defer r.mu.RUnlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-_, exists := r.bindings[abstractType]
-return exists
+	_, exists := r.bindings[abstractType]
+	return exists
 }

@@ -31,19 +31,19 @@ type typeInfo struct {
 
 // constructorMetadata stores parsed constructor information.
 type constructorMetadata struct {
-	paramTypes  []reflect.Type
-	returnType  reflect.Type
-	hasError    bool
-	numIn       int
-	numOut      int
+	paramTypes []reflect.Type
+	returnType reflect.Type
+	hasError   bool
+	numIn      int
+	numOut     int
 }
 
 // fieldInfo stores metadata about a struct field for auto-wiring.
 type fieldInfo struct {
-	index       int
-	name        string
-	typ         reflect.Type
-	tag         reflect.StructTag
+	index        int
+	name         string
+	typ          reflect.Type
+	tag          reflect.StructTag
 	isInjectable bool
 }
 

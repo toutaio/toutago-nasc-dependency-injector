@@ -202,39 +202,39 @@ func (n *Nasc) Make(abstractType interface{}) interface{} {
 //
 // Example:
 //
-//container.Singleton((*Database)(nil), &PostgresDB{})
-//db1 := container.Make((*Database)(nil)).(Database)
-//db2 := container.Make((*Database)(nil)).(Database)
-//// db1 == db2 (same instance)
+// container.Singleton((*Database)(nil), &PostgresDB{})
+// db1 := container.Make((*Database)(nil)).(Database)
+// db2 := container.Make((*Database)(nil)).(Database)
+// // db1 == db2 (same instance)
 func (n *Nasc) Singleton(abstractType, concreteType interface{}) error {
-if abstractType == nil {
-return &InvalidBindingError{Reason: "abstract type cannot be nil"}
-}
-if concreteType == nil {
-return &InvalidBindingError{Reason: "concrete type cannot be nil"}
-}
+	if abstractType == nil {
+		return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+	}
+	if concreteType == nil {
+		return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-concreteT := reflect.TypeOf(concreteType)
-if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
-// Valid pointer to struct
-} else {
-return &InvalidBindingError{
-Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
-}
-}
+	concreteT := reflect.TypeOf(concreteType)
+	if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+		// Valid pointer to struct
+	} else {
+		return &InvalidBindingError{
+			Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+		}
+	}
 
-binding := &registry.Binding{
-AbstractType: abstractT,
-ConcreteType: concreteT,
-Lifetime:     string(LifetimeSingleton),
-}
+	binding := &registry.Binding{
+		AbstractType: abstractT,
+		ConcreteType: concreteT,
+		Lifetime:     string(LifetimeSingleton),
+	}
 
-return n.registry.Register(binding)
+	return n.registry.Register(binding)
 }
 
 // Scoped registers a scoped binding.
@@ -242,38 +242,38 @@ return n.registry.Register(binding)
 //
 // Example:
 //
-//container.Scoped((*UnitOfWork)(nil), &DbUnitOfWork{})
-//scope := container.CreateScope()
-//uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
+// container.Scoped((*UnitOfWork)(nil), &DbUnitOfWork{})
+// scope := container.CreateScope()
+// uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
 func (n *Nasc) Scoped(abstractType, concreteType interface{}) error {
-if abstractType == nil {
-return &InvalidBindingError{Reason: "abstract type cannot be nil"}
-}
-if concreteType == nil {
-return &InvalidBindingError{Reason: "concrete type cannot be nil"}
-}
+	if abstractType == nil {
+		return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+	}
+	if concreteType == nil {
+		return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-concreteT := reflect.TypeOf(concreteType)
-if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
-// Valid pointer to struct
-} else {
-return &InvalidBindingError{
-Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
-}
-}
+	concreteT := reflect.TypeOf(concreteType)
+	if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+		// Valid pointer to struct
+	} else {
+		return &InvalidBindingError{
+			Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+		}
+	}
 
-binding := &registry.Binding{
-AbstractType: abstractT,
-ConcreteType: concreteT,
-Lifetime:     string(LifetimeScoped),
-}
+	binding := &registry.Binding{
+		AbstractType: abstractT,
+		ConcreteType: concreteT,
+		Lifetime:     string(LifetimeScoped),
+	}
 
-return n.registry.Register(binding)
+	return n.registry.Register(binding)
 }
 
 // Factory registers a factory binding.
@@ -281,31 +281,31 @@ return n.registry.Register(binding)
 //
 // Example:
 //
-//container.Factory((*Connection)(nil), func(c *Nasc) (interface{}, error) {
-//    config := c.Make((*Config)(nil)).(*Config)
-//    return NewConnection(config.DSN), nil
-//})
+//	container.Factory((*Connection)(nil), func(c *Nasc) (interface{}, error) {
+//	   config := c.Make((*Config)(nil)).(*Config)
+//	   return NewConnection(config.DSN), nil
+//	})
 func (n *Nasc) Factory(abstractType interface{}, factory FactoryFunc) error {
-if abstractType == nil {
-return &InvalidBindingError{Reason: "abstract type cannot be nil"}
-}
-if factory == nil {
-return &InvalidBindingError{Reason: "factory function cannot be nil"}
-}
+	if abstractType == nil {
+		return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+	}
+	if factory == nil {
+		return &InvalidBindingError{Reason: "factory function cannot be nil"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-binding := &registry.Binding{
-AbstractType: abstractT,
-ConcreteType: nil, // Factory doesn't have a concrete type
-Lifetime:     string(LifetimeFactory),
-Factory:      factory,
-}
+	binding := &registry.Binding{
+		AbstractType: abstractT,
+		ConcreteType: nil, // Factory doesn't have a concrete type
+		Lifetime:     string(LifetimeFactory),
+		Factory:      factory,
+	}
 
-return n.registry.Register(binding)
+	return n.registry.Register(binding)
 }
 
 // CreateScope creates a new dependency resolution scope.
@@ -313,11 +313,11 @@ return n.registry.Register(binding)
 //
 // Example:
 //
-//scope := container.CreateScope()
-//defer scope.Dispose()
-//uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
+// scope := container.CreateScope()
+// defer scope.Dispose()
+// uow := scope.Make((*UnitOfWork)(nil)).(UnitOfWork)
 func (n *Nasc) CreateScope() *Scope {
-return newScope(n)
+	return newScope(n)
 }
 
 // BindNamed registers a named binding.
@@ -325,70 +325,70 @@ return newScope(n)
 //
 // Example:
 //
-//container.BindNamed((*Logger)(nil), &FileLogger{}, "file")
-//container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
+// container.BindNamed((*Logger)(nil), &FileLogger{}, "file")
+// container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
 //
-//fileLogger := container.MakeNamed((*Logger)(nil), "file").(Logger)
+// fileLogger := container.MakeNamed((*Logger)(nil), "file").(Logger)
 func (n *Nasc) BindNamed(abstractType, concreteType interface{}, name string) error {
-if abstractType == nil {
-return &InvalidBindingError{Reason: "abstract type cannot be nil"}
-}
-if concreteType == nil {
-return &InvalidBindingError{Reason: "concrete type cannot be nil"}
-}
-if name == "" {
-return &InvalidBindingError{Reason: "name cannot be empty"}
-}
+	if abstractType == nil {
+		return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+	}
+	if concreteType == nil {
+		return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+	}
+	if name == "" {
+		return &InvalidBindingError{Reason: "name cannot be empty"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-concreteT := reflect.TypeOf(concreteType)
-if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
-// Valid pointer to struct
-} else {
-return &InvalidBindingError{
-Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
-}
-}
+	concreteT := reflect.TypeOf(concreteType)
+	if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+		// Valid pointer to struct
+	} else {
+		return &InvalidBindingError{
+			Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+		}
+	}
 
-binding := &registry.Binding{
-AbstractType: abstractT,
-ConcreteType: concreteT,
-Lifetime:     string(LifetimeTransient),
-Name:         name,
-}
+	binding := &registry.Binding{
+		AbstractType: abstractT,
+		ConcreteType: concreteT,
+		Lifetime:     string(LifetimeTransient),
+		Name:         name,
+	}
 
-return n.registry.RegisterNamed(binding)
+	return n.registry.RegisterNamed(binding)
 }
 
 // MakeNamed resolves and returns a named instance.
 //
 // Example:
 //
-//logger := container.MakeNamed((*Logger)(nil), "file").(Logger)
+// logger := container.MakeNamed((*Logger)(nil), "file").(Logger)
 func (n *Nasc) MakeNamed(abstractType interface{}, name string) interface{} {
-if abstractType == nil {
-panic("cannot resolve nil type")
-}
-if name == "" {
-panic("name cannot be empty")
-}
+	if abstractType == nil {
+		panic("cannot resolve nil type")
+	}
+	if name == "" {
+		panic("name cannot be empty")
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-binding, err := n.registry.GetNamed(abstractT, name)
-if err != nil {
-panic(fmt.Sprintf("named binding '%s' not found for type %v: %v", name, abstractT, err))
-}
+	binding, err := n.registry.GetNamed(abstractT, name)
+	if err != nil {
+		panic(fmt.Sprintf("named binding '%s' not found for type %v: %v", name, abstractT, err))
+	}
 
-// Create instance based on binding type
-return n.createInstanceFromBinding(binding, abstractT)
+	// Create instance based on binding type
+	return n.createInstanceFromBinding(binding, abstractT)
 }
 
 // MakeAll resolves and returns all implementations of an interface.
@@ -396,29 +396,30 @@ return n.createInstanceFromBinding(binding, abstractT)
 //
 // Example:
 //
-//loggers := container.MakeAll((*Logger)(nil))
-//for _, logger := range loggers {
-//    logger.(Logger).Log("message")
-//}
+// loggers := container.MakeAll((*Logger)(nil))
+//
+//	for _, logger := range loggers {
+//	   logger.(Logger).Log("message")
+//	}
 func (n *Nasc) MakeAll(abstractType interface{}) []interface{} {
-if abstractType == nil {
-panic("cannot resolve nil type")
-}
+	if abstractType == nil {
+		panic("cannot resolve nil type")
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-bindings := n.registry.GetAll(abstractT)
-instances := make([]interface{}, 0, len(bindings))
+	bindings := n.registry.GetAll(abstractT)
+	instances := make([]interface{}, 0, len(bindings))
 
-for _, binding := range bindings {
-instance := n.createInstanceFromBinding(binding, abstractT)
-instances = append(instances, instance)
-}
+	for _, binding := range bindings {
+		instance := n.createInstanceFromBinding(binding, abstractT)
+		instances = append(instances, instance)
+	}
 
-return instances
+	return instances
 }
 
 // BindWithTags registers a binding with tags.
@@ -426,63 +427,63 @@ return instances
 //
 // Example:
 //
-//container.BindWithTags((*Plugin)(nil), &PluginA{}, []string{"plugin", "enabled"})
-//container.BindWithTags((*Plugin)(nil), &PluginB{}, []string{"plugin", "enabled"})
+// container.BindWithTags((*Plugin)(nil), &PluginA{}, []string{"plugin", "enabled"})
+// container.BindWithTags((*Plugin)(nil), &PluginB{}, []string{"plugin", "enabled"})
 //
-//plugins := container.MakeWithTag("plugin")
+// plugins := container.MakeWithTag("plugin")
 func (n *Nasc) BindWithTags(abstractType, concreteType interface{}, tags []string) error {
-if abstractType == nil {
-return &InvalidBindingError{Reason: "abstract type cannot be nil"}
-}
-if concreteType == nil {
-return &InvalidBindingError{Reason: "concrete type cannot be nil"}
-}
+	if abstractType == nil {
+		return &InvalidBindingError{Reason: "abstract type cannot be nil"}
+	}
+	if concreteType == nil {
+		return &InvalidBindingError{Reason: "concrete type cannot be nil"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-concreteT := reflect.TypeOf(concreteType)
-if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
-// Valid pointer to struct
-} else {
-return &InvalidBindingError{
-Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
-}
-}
+	concreteT := reflect.TypeOf(concreteType)
+	if concreteT.Kind() == reflect.Ptr && concreteT.Elem().Kind() == reflect.Struct {
+		// Valid pointer to struct
+	} else {
+		return &InvalidBindingError{
+			Reason: fmt.Sprintf("concrete type must be pointer to struct, got %v", concreteT),
+		}
+	}
 
-binding := &registry.Binding{
-AbstractType: abstractT,
-ConcreteType: concreteT,
-Lifetime:     string(LifetimeTransient),
-Tags:         tags,
-}
+	binding := &registry.Binding{
+		AbstractType: abstractT,
+		ConcreteType: concreteT,
+		Lifetime:     string(LifetimeTransient),
+		Tags:         tags,
+	}
 
-// Tagged bindings need unique names to avoid conflicts
-binding.Name = fmt.Sprintf("_tag_%s_%p", tags[0], concreteType)
-return n.registry.RegisterNamed(binding)
+	// Tagged bindings need unique names to avoid conflicts
+	binding.Name = fmt.Sprintf("_tag_%s_%p", tags[0], concreteType)
+	return n.registry.RegisterNamed(binding)
 }
 
 // MakeWithTag resolves all instances with the specified tag.
 //
 // Example:
 //
-//plugins := container.MakeWithTag("plugin")
+// plugins := container.MakeWithTag("plugin")
 func (n *Nasc) MakeWithTag(tag string) []interface{} {
-if tag == "" {
-panic("tag cannot be empty")
-}
+	if tag == "" {
+		panic("tag cannot be empty")
+	}
 
-bindings := n.registry.GetByTag(tag)
-instances := make([]interface{}, 0, len(bindings))
+	bindings := n.registry.GetByTag(tag)
+	instances := make([]interface{}, 0, len(bindings))
 
-for _, binding := range bindings {
-instance := n.createInstanceFromBinding(binding, binding.AbstractType)
-instances = append(instances, instance)
-}
+	for _, binding := range bindings {
+		instance := n.createInstanceFromBinding(binding, binding.AbstractType)
+		instances = append(instances, instance)
+	}
 
-return instances
+	return instances
 }
 
 // createInstanceFromBinding creates an instance from a binding.
@@ -569,37 +570,37 @@ func (n *Nasc) createInstanceFromBinding(binding *registry.Binding, abstractT re
 
 // resolutionContext tracks the current resolution path for circular dependency detection.
 type resolutionContext struct {
-stack []string
-seen  map[string]bool
+	stack []string
+	seen  map[string]bool
 }
 
 // newResolutionContext creates a new resolution context.
 func newResolutionContext() *resolutionContext {
-return &resolutionContext{
-stack: make([]string, 0),
-seen:  make(map[string]bool),
-}
+	return &resolutionContext{
+		stack: make([]string, 0),
+		seen:  make(map[string]bool),
+	}
 }
 
 // push adds a type to the resolution stack.
 func (rc *resolutionContext) push(typeName string) error {
-if rc.seen[typeName] {
-// Circular dependency detected
-path := append(rc.stack, typeName)
-return &CircularDependencyError{Path: path}
-}
-rc.seen[typeName] = true
-rc.stack = append(rc.stack, typeName)
-return nil
+	if rc.seen[typeName] {
+		// Circular dependency detected
+		path := append(rc.stack, typeName)
+		return &CircularDependencyError{Path: path}
+	}
+	rc.seen[typeName] = true
+	rc.stack = append(rc.stack, typeName)
+	return nil
 }
 
 // pop removes the last type from the resolution stack.
 func (rc *resolutionContext) pop() {
-if len(rc.stack) > 0 {
-last := rc.stack[len(rc.stack)-1]
-delete(rc.seen, last)
-rc.stack = rc.stack[:len(rc.stack)-1]
-}
+	if len(rc.stack) > 0 {
+		last := rc.stack[len(rc.stack)-1]
+		delete(rc.seen, last)
+		rc.stack = rc.stack[:len(rc.stack)-1]
+	}
 }
 
 // MakeSafe resolves and returns an instance without panicking.
@@ -607,160 +608,161 @@ rc.stack = rc.stack[:len(rc.stack)-1]
 //
 // Example:
 //
-//logger, err := container.MakeSafe((*Logger)(nil))
-//if err != nil {
-//    return fmt.Errorf("failed to get logger: %w", err)
-//}
+// logger, err := container.MakeSafe((*Logger)(nil))
+//
+//	if err != nil {
+//	   return fmt.Errorf("failed to get logger: %w", err)
+//	}
 func (n *Nasc) MakeSafe(abstractType interface{}) (interface{}, error) {
-if abstractType == nil {
-return nil, &InvalidBindingError{Reason: "cannot resolve nil type"}
-}
+	if abstractType == nil {
+		return nil, &InvalidBindingError{Reason: "cannot resolve nil type"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-ctx := newResolutionContext()
-return n.makeSafeWithContext(abstractT, "", ctx)
+	ctx := newResolutionContext()
+	return n.makeSafeWithContext(abstractT, "", ctx)
 }
 
 // MakeNamedSafe resolves a named instance without panicking.
 func (n *Nasc) MakeNamedSafe(abstractType interface{}, name string) (interface{}, error) {
-if abstractType == nil {
-return nil, &InvalidBindingError{Reason: "cannot resolve nil type"}
-}
-if name == "" {
-return nil, &InvalidBindingError{Reason: "name cannot be empty"}
-}
+	if abstractType == nil {
+		return nil, &InvalidBindingError{Reason: "cannot resolve nil type"}
+	}
+	if name == "" {
+		return nil, &InvalidBindingError{Reason: "name cannot be empty"}
+	}
 
-abstractT := reflect.TypeOf(abstractType)
-if abstractT.Kind() == reflect.Ptr {
-abstractT = abstractT.Elem()
-}
+	abstractT := reflect.TypeOf(abstractType)
+	if abstractT.Kind() == reflect.Ptr {
+		abstractT = abstractT.Elem()
+	}
 
-ctx := newResolutionContext()
-return n.makeSafeWithContext(abstractT, name, ctx)
+	ctx := newResolutionContext()
+	return n.makeSafeWithContext(abstractT, name, ctx)
 }
 
 // makeSafeWithContext performs safe resolution with circular dependency detection.
 func (n *Nasc) makeSafeWithContext(abstractT reflect.Type, name string, ctx *resolutionContext) (interface{}, error) {
-// Build type key for tracking
-typeKey := abstractT.String()
-if name != "" {
-typeKey = fmt.Sprintf("%s[%s]", typeKey, name)
-}
+	// Build type key for tracking
+	typeKey := abstractT.String()
+	if name != "" {
+		typeKey = fmt.Sprintf("%s[%s]", typeKey, name)
+	}
 
-// Check for circular dependency
-if err := ctx.push(typeKey); err != nil {
-return nil, err
-}
-defer ctx.pop()
+	// Check for circular dependency
+	if err := ctx.push(typeKey); err != nil {
+		return nil, err
+	}
+	defer ctx.pop()
 
-// Get binding
-var binding *registry.Binding
-var err error
+	// Get binding
+	var binding *registry.Binding
+	var err error
 
-if name != "" {
-binding, err = n.registry.GetNamed(abstractT, name)
-} else {
-binding, err = n.registry.Get(abstractT)
-}
+	if name != "" {
+		binding, err = n.registry.GetNamed(abstractT, name)
+	} else {
+		binding, err = n.registry.Get(abstractT)
+	}
 
-if err != nil {
-return nil, &ResolutionError{
-Type:  abstractT,
-Name:  name,
-Cause: err,
-}
-}
+	if err != nil {
+		return nil, &ResolutionError{
+			Type:  abstractT,
+			Name:  name,
+			Cause: err,
+		}
+	}
 
-// Create instance
-return n.createInstanceSafe(binding, abstractT, ctx)
+	// Create instance
+	return n.createInstanceSafe(binding, abstractT, ctx)
 }
 
 // createInstanceSafe creates an instance safely with context.
 func (n *Nasc) createInstanceSafe(binding *registry.Binding, abstractT reflect.Type, ctx *resolutionContext) (interface{}, error) {
-switch Lifetime(binding.Lifetime) {
-case LifetimeTransient:
-if binding.Constructor != nil {
-info := binding.Constructor.(*constructorInfo)
-return n.invokeConstructorSafe(info, ctx)
-}
-instance := reflect.New(binding.ConcreteType.Elem())
-return instance.Interface(), nil
+	switch Lifetime(binding.Lifetime) {
+	case LifetimeTransient:
+		if binding.Constructor != nil {
+			info := binding.Constructor.(*constructorInfo)
+			return n.invokeConstructorSafe(info, ctx)
+		}
+		instance := reflect.New(binding.ConcreteType.Elem())
+		return instance.Interface(), nil
 
-case LifetimeSingleton:
-cacheKey := abstractT
-if binding.Name != "" {
-cacheKey = reflect.TypeOf(struct {
-t reflect.Type
-n string
-}{abstractT, binding.Name})
-}
+	case LifetimeSingleton:
+		cacheKey := abstractT
+		if binding.Name != "" {
+			cacheKey = reflect.TypeOf(struct {
+				t reflect.Type
+				n string
+			}{abstractT, binding.Name})
+		}
 
-// For singletons, we need to handle potential circular deps in factory
-instance, err := n.singletonCache.getOrCreate(cacheKey, func() (interface{}, error) {
-if binding.Constructor != nil {
-info := binding.Constructor.(*constructorInfo)
-return n.invokeConstructorSafe(info, ctx)
-}
-newInstance := reflect.New(binding.ConcreteType.Elem())
-return newInstance.Interface(), nil
-})
-return instance, err
+		// For singletons, we need to handle potential circular deps in factory
+		instance, err := n.singletonCache.getOrCreate(cacheKey, func() (interface{}, error) {
+			if binding.Constructor != nil {
+				info := binding.Constructor.(*constructorInfo)
+				return n.invokeConstructorSafe(info, ctx)
+			}
+			newInstance := reflect.New(binding.ConcreteType.Elem())
+			return newInstance.Interface(), nil
+		})
+		return instance, err
 
-case LifetimeFactory:
-factory, ok := binding.Factory.(FactoryFunc)
-if !ok {
-return nil, &ResolutionError{
-Type:    abstractT,
-Context: "invalid factory function",
-}
-}
-return factory(n)
+	case LifetimeFactory:
+		factory, ok := binding.Factory.(FactoryFunc)
+		if !ok {
+			return nil, &ResolutionError{
+				Type:    abstractT,
+				Context: "invalid factory function",
+			}
+		}
+		return factory(n)
 
-default:
-return nil, &ResolutionError{
-Type:    abstractT,
-Context: fmt.Sprintf("unknown lifetime: %s", binding.Lifetime),
-}
-}
+	default:
+		return nil, &ResolutionError{
+			Type:    abstractT,
+			Context: fmt.Sprintf("unknown lifetime: %s", binding.Lifetime),
+		}
+	}
 }
 
 // invokeConstructorSafe invokes a constructor safely with circular detection.
 func (n *Nasc) invokeConstructorSafe(info *constructorInfo, ctx *resolutionContext) (interface{}, error) {
-params := make([]reflect.Value, len(info.paramTypes))
+	params := make([]reflect.Value, len(info.paramTypes))
 
-for i, paramType := range info.paramTypes {
-// Resolve parameter with context
-param, err := n.makeSafeWithContext(paramType, "", ctx)
-if err != nil {
-return nil, &ResolutionError{
-Type:    info.returnType,
-Context: fmt.Sprintf("failed to resolve constructor parameter %d (%v)", i, paramType),
-Cause:   err,
-}
-}
-params[i] = reflect.ValueOf(param)
-}
+	for i, paramType := range info.paramTypes {
+		// Resolve parameter with context
+		param, err := n.makeSafeWithContext(paramType, "", ctx)
+		if err != nil {
+			return nil, &ResolutionError{
+				Type:    info.returnType,
+				Context: fmt.Sprintf("failed to resolve constructor parameter %d (%v)", i, paramType),
+				Cause:   err,
+			}
+		}
+		params[i] = reflect.ValueOf(param)
+	}
 
-// Call constructor
-results := info.fn.Call(params)
+	// Call constructor
+	results := info.fn.Call(params)
 
-// Handle error return
-if len(results) == 2 {
-if !results[1].IsNil() {
-err := results[1].Interface().(error)
-return nil, &ResolutionError{
-Type:    info.returnType,
-Context: "constructor returned error",
-Cause:   err,
-}
-}
-}
+	// Handle error return
+	if len(results) == 2 {
+		if !results[1].IsNil() {
+			err := results[1].Interface().(error)
+			return nil, &ResolutionError{
+				Type:    info.returnType,
+				Context: "constructor returned error",
+				Cause:   err,
+			}
+		}
+	}
 
-return results[0].Interface(), nil
+	return results[0].Interface(), nil
 }
 
 // Validate checks the container's bindings for potential issues.
@@ -768,42 +770,42 @@ return results[0].Interface(), nil
 //
 // Example:
 //
-//if err := container.Validate(); err != nil {
-//    log.Fatalf("Container validation failed: %v", err)
-//}
+//	if err := container.Validate(); err != nil {
+//	   log.Fatalf("Container validation failed: %v", err)
+//	}
 func (n *Nasc) Validate() error {
-var validationErrors []error
+	var validationErrors []error
 
-// Get all types
-allTypes := n.registry.GetAllTypes()
+	// Get all types
+	allTypes := n.registry.GetAllTypes()
 
-// Try to resolve each type
-for _, abstractType := range allTypes {
-// Try unnamed binding if exists
-if n.registry.HasUnnamedBinding(abstractType) {
-ctx := newResolutionContext()
-_, err := n.makeSafeWithContext(abstractType, "", ctx)
-if err != nil {
-validationErrors = append(validationErrors, fmt.Errorf("binding %v: %w", abstractType, err))
-}
-}
+	// Try to resolve each type
+	for _, abstractType := range allTypes {
+		// Try unnamed binding if exists
+		if n.registry.HasUnnamedBinding(abstractType) {
+			ctx := newResolutionContext()
+			_, err := n.makeSafeWithContext(abstractType, "", ctx)
+			if err != nil {
+				validationErrors = append(validationErrors, fmt.Errorf("binding %v: %w", abstractType, err))
+			}
+		}
 
-// Try all named bindings for this type
-names := n.registry.GetAllNamedFor(abstractType)
-for _, name := range names {
-ctx := newResolutionContext()
-_, err := n.makeSafeWithContext(abstractType, name, ctx)
-if err != nil {
-validationErrors = append(validationErrors, fmt.Errorf("binding %v[%s]: %w", abstractType, name, err))
-}
-}
-}
+		// Try all named bindings for this type
+		names := n.registry.GetAllNamedFor(abstractType)
+		for _, name := range names {
+			ctx := newResolutionContext()
+			_, err := n.makeSafeWithContext(abstractType, name, ctx)
+			if err != nil {
+				validationErrors = append(validationErrors, fmt.Errorf("binding %v[%s]: %w", abstractType, name, err))
+			}
+		}
+	}
 
-if len(validationErrors) > 0 {
-return &ValidationError{Errors: validationErrors}
-}
+	if len(validationErrors) > 0 {
+		return &ValidationError{Errors: validationErrors}
+	}
 
-return nil
+	return nil
 }
 
 // BindAutoWire registers a binding with automatic dependency injection enabled.
@@ -850,9 +852,9 @@ func (n *Nasc) BindAutoWire(abstractType, concreteType interface{}) error {
 // MustMake is an explicit panic version of Make for cases where panic is desired.
 // This is useful to distinguish intentional panics from unintended ones.
 func (n *Nasc) MustMake(abstractType interface{}) interface{} {
-instance, err := n.MakeSafe(abstractType)
-if err != nil {
-panic(err)
-}
-return instance
+	instance, err := n.MakeSafe(abstractType)
+	if err != nil {
+		panic(err)
+	}
+	return instance
 }
