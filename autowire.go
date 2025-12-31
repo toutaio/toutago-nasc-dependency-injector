@@ -157,7 +157,7 @@ func (n *Nasc) injectField(field autoWireFieldInfo) error {
 	var typeToken interface{}
 	if field.isInterface {
 		// For interface fields, we need to create a nil pointer to the interface type
-		typeToken = reflect.Zero(reflect.PtrTo(field.fieldType)).Interface()
+		typeToken = reflect.Zero(reflect.PointerTo(field.fieldType)).Interface()
 	} else {
 		return fmt.Errorf("only interface fields are supported for injection, got %v", field.fieldType)
 	}

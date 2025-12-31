@@ -88,7 +88,7 @@ func (n *Nasc) invokeConstructor(info *constructorInfo) (interface{}, error) {
 		var typeToken interface{}
 		if paramType.Kind() == reflect.Interface {
 			// For interface parameters, create nil pointer to interface
-			typeToken = reflect.Zero(reflect.PtrTo(paramType)).Interface()
+			typeToken = reflect.Zero(reflect.PointerTo(paramType)).Interface()
 		} else {
 			return nil, fmt.Errorf("constructor parameter %d must be an interface, got %v", i, paramType)
 		}

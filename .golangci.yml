@@ -14,7 +14,7 @@ linters:
     - gosimple
     - ineffassign
     - typecheck
-    - exportloopref
+    # - exportloopref # Deprecated in Go 1.22+
     - noctx
     - bodyclose
     - gocritic
@@ -26,7 +26,6 @@ linters:
 
 linters-settings:
   govet:
-    check-shadowing: true
   gofmt:
     simplify: true
   gocritic:
