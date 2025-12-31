@@ -1,0 +1,43 @@
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - exportloopref
+    - noctx
+    - bodyclose
+    - gocritic
+    - gosec
+    - misspell
+    - unconvert
+    - unparam
+    - revive
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  gofmt:
+    simplify: true
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+  revive:
+    confidence: 0.8
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
