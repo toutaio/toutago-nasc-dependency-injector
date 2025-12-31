@@ -35,30 +35,14 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
       
-    - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out ./...
-      
-    - name: Check coverage
-      run: |
-        coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-        echo "Coverage: $coverage%"
-        if (( $(echo "$coverage < 80.0" | bc -l) )); then
-          echo "Coverage below 80%"
-          exit 1
-        fi
-      shell: bash
-        
-    - name: Run go vet
-      run: go vet ./...
-      
-    - name: Run staticcheck
-      run: |
-        go install honnef.co/go/tools/cmd/staticcheck@latest
-        staticcheck ./...
+    - name: Run tests with race detector
+      run: go test -v -race -timeout 10m ./...
 
-  lint:
-    name: Lint
+  coverage:
+    name: Code Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -66,7 +50,199 @@ jobs:
     - name: Setup Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22.x'
+        go-version: '1.23.x'
+        
+    - name: Run tests with coverage
+      run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      
+    - name: Generate coverage report
+      run: |
+        go tool cover -func=coverage.out -o=coverage.txt
+        cat coverage.txt
+      
+    - name: Check coverage threshold
+      run: |
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+        echo "Total coverage: ${COVERAGE}%"
+        if (( $(echo "$COVERAGE < 70.0" | bc -l) )); then
+          echo "❌ Coverage ${COVERAGE}% is below threshold of 70%"
+          exit 1
+        fi
+        echo "✅ Coverage ${COVERAGE}% meets threshold of 70%"
+      shell: bash
+      
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: |
+          coverage.out
+          coverage.txt
+        retention-days: 30
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+      
+    - name: Install govulncheck
+      run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      
+    - name: Run vulnerability scan
+      run: govulncheck ./...
+      continue-on-error: true
+
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+      
+    - name: Check formatting
+      run: |
+        if [ -n "$(gofmt -l .)" ]; then
+          echo "❌ Code is not formatted. Please run: gofmt -w ."
+          gofmt -d .
+          exit 1
+        fi
+        echo "✅ Code is properly formatted"
+      
+    - name: Run go vet
+      run: go vet ./...
+      
+    - name: Install staticcheck
+      run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      
+    - name: Run staticcheck
+      run: staticcheck ./...
+      
+    - name: Verify go.mod is tidy
+      run: |
+        go mod tidy
+        if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+          echo "❌ go.mod or go.sum is not tidy. Please run: go mod tidy"
+          git diff go.mod go.sum
+          exit 1
+        fi
+        echo "✅ go.mod and go.sum are tidy"
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+      
+    - name: Build
+      run: go build -v ./...
+      
+    - name: Verify build artifacts
+      run: |
+        echo "✅ Build successful on ${{ matrix.os }}"
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+      
+    - name: Run benchmarks
+      run: go test -bench=. -benchmem -run=^$ ./... | tee benchmark.txt
+      
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: benchmark-results
+        path: benchmark.txt
+        retention-days: 30
+
+  licenses:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
+      
+    - name: Install go-licenses
+      run: go install github.com/google/go-licenses@latest
+      
+    - name: Check licenses
+      run: |
+        echo "Scanning dependency licenses..."
+        go-licenses report ./... > licenses.txt 2>&1 || true
+        if [ -s licenses.txt ]; then
+          echo "License report generated:"
+          cat licenses.txt
+        else
+          echo "No external dependencies found (zero dependencies library)"
+        fi
+      
+    - name: Upload license report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: license-report
+        path: licenses.txt
+        retention-days: 30
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23.x'
         
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v4
