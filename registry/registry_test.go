@@ -205,7 +205,7 @@ func TestConcurrentReadsAndWrites(t *testing.T) {
 				{
 					Name: "Field" + typeName,
 					Type: reflect.TypeOf(""),
-					Tag:  reflect.StructTag(fmt.Sprintf(`json:"%s"`, typeName)),
+					Tag:  reflect.StructTag(fmt.Sprintf("json:%q", typeName)),
 				},
 			})
 

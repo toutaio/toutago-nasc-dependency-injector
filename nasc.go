@@ -589,8 +589,8 @@ func newResolutionContext() *resolutionContext {
 func (rc *resolutionContext) push(typeName string) error {
 	if rc.seen[typeName] {
 		// Circular dependency detected
-		path := append(rc.stack, typeName)
-		return &CircularDependencyError{Path: path}
+		rc.stack = append(rc.stack, typeName)
+		return &CircularDependencyError{Path: rc.stack}
 	}
 	rc.seen[typeName] = true
 	rc.stack = append(rc.stack, typeName)

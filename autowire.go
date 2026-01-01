@@ -79,7 +79,7 @@ func (n *Nasc) getInjectableFields(structValue reflect.Value) []autoWireFieldInf
 		}
 
 		fieldValue := structValue.Field(cached.index)
-		tag := string(cached.tag.Get("inject"))
+		tag := cached.tag.Get("inject")
 		opts := parseInjectTag(tag)
 
 		if opts.skip {
@@ -138,9 +138,9 @@ func (n *Nasc) AutoWire(instance interface{}) error {
 	fields := n.getInjectableFields(value)
 
 	// Inject each field
-	for _, field := range fields {
-		if err := n.injectField(field); err != nil {
-			return fmt.Errorf("failed to inject field %s: %w", field.field.Name, err)
+	for i := range fields {
+		if err := n.injectField(&fields[i]); err != nil {
+			return fmt.Errorf("failed to inject field %s: %w", fields[i].field.Name, err)
 		}
 	}
 
@@ -148,7 +148,7 @@ func (n *Nasc) AutoWire(instance interface{}) error {
 }
 
 // injectField injects a single field.
-func (n *Nasc) injectField(field autoWireFieldInfo) error {
+func (n *Nasc) injectField(field *autoWireFieldInfo) error {
 	if !field.fieldValue.CanSet() {
 		return fmt.Errorf("field %s is not settable (not exported?)", field.field.Name)
 	}
