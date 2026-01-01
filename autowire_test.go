@@ -29,8 +29,8 @@ type ServiceNoTags struct {
 
 func TestAutoWire_BasicInjection(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	service := &ServiceWithDeps{}
 	err := container.AutoWire(service)
@@ -48,7 +48,7 @@ func TestAutoWire_BasicInjection(t *testing.T) {
 
 func TestAutoWire_OptionalDependency(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	// Note: Database is NOT bound
 
 	service := &ServiceWithOptional{}
@@ -67,7 +67,7 @@ func TestAutoWire_OptionalDependency(t *testing.T) {
 
 func TestAutoWire_PartialTags(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	// Database intentionally not bound to test partial injection
 
 	service := &ServicePartialTags{}
@@ -86,8 +86,8 @@ func TestAutoWire_PartialTags(t *testing.T) {
 
 func TestAutoWire_NoTags(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	service := &ServiceNoTags{}
 	err := container.AutoWire(service)
@@ -134,14 +134,14 @@ func TestAutoWire_MissingDependency(t *testing.T) {
 
 func TestAutoWire_SingletonInjection(t *testing.T) {
 	container := New()
-	container.Singleton((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Singleton((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	service1 := &ServiceWithDeps{}
 	service2 := &ServiceWithDeps{}
 
-	container.AutoWire(service1)
-	container.AutoWire(service2)
+	_ = container.AutoWire(service1)
+	_ = container.AutoWire(service2)
 
 	// Both should have the same Logger instance (singleton)
 	if service1.Logger != service2.Logger {
@@ -191,11 +191,11 @@ func ExampleNasc_AutoWire() {
 	}
 
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	service := &MyService{}
-	container.AutoWire(service)
+	_ = container.AutoWire(service)
 
 	// service.Logger and service.Database are now injected
 	_ = service.Logger
@@ -205,13 +205,13 @@ func ExampleNasc_AutoWire() {
 // Benchmark
 func BenchmarkAutoWire(b *testing.B) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		service := &ServiceWithDeps{}
-		container.AutoWire(service)
+		_ = container.AutoWire(service)
 	}
 }
 

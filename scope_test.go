@@ -37,7 +37,7 @@ func (f *failingDisposable) Dispose() error {
 // TestScopeIsolation verifies that scopes maintain isolated instance caches
 func TestScopeIsolation(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope1 := container.CreateScope()
 	scope2 := container.CreateScope()
@@ -55,14 +55,14 @@ func TestScopeIsolation(t *testing.T) {
 		t.Error("Expected same instance within same scope")
 	}
 
-	scope1.Dispose()
-	scope2.Dispose()
+	_ = scope1.Dispose()
+	_ = scope2.Dispose()
 }
 
 // TestChildScopeInheritance verifies that child scopes inherit parent registrations
 func TestChildScopeInheritance(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	parentScope := container.CreateScope()
 	childScope := parentScope.CreateChildScope()
@@ -74,7 +74,7 @@ func TestChildScopeInheritance(t *testing.T) {
 		t.Error("Expected different instances in parent and child scopes")
 	}
 
-	parentScope.Dispose()
+	_ = parentScope.Dispose()
 }
 
 // TestDisposalOrder verifies that instances are disposed in reverse creation order
@@ -84,8 +84,8 @@ func TestDisposalOrder(t *testing.T) {
 	type serviceA struct{}
 	type serviceB struct{}
 
-	container.Scoped((*serviceA)(nil), &serviceA{})
-	container.Scoped((*serviceB)(nil), &serviceB{})
+	_ = container.Scoped((*serviceA)(nil), &serviceA{})
+	_ = container.Scoped((*serviceB)(nil), &serviceB{})
 
 	scope := container.CreateScope()
 
@@ -94,7 +94,7 @@ func TestDisposalOrder(t *testing.T) {
 	scope.Make((*serviceB)(nil))
 
 	// Disposal should be reverse: B, A
-	scope.Dispose()
+	_ = scope.Dispose()
 
 	// Note: This test structure shows intent but actual tracking needs
 	// to be implemented with proper disposal tracking mechanism
@@ -104,10 +104,10 @@ func TestDisposalOrder(t *testing.T) {
 // TestInitializableInterface verifies Initialize is called after creation
 func TestInitializableInterface(t *testing.T) {
 	container := New()
-	container.Scoped((*initializableService)(nil), &initializableService{})
+	_ = container.Scoped((*initializableService)(nil), &initializableService{})
 
 	scope := container.CreateScope()
-	defer scope.Dispose()
+	defer func() { _ = scope.Dispose() }()
 
 	instance := scope.Make((*initializableService)(nil)).(*initializableService)
 
@@ -119,7 +119,7 @@ func TestInitializableInterface(t *testing.T) {
 // TestDisposableInterface verifies Dispose is called on scope disposal
 func TestDisposableInterface(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope := container.CreateScope()
 	instance := scope.Make((*disposableService)(nil)).(*disposableService)
@@ -141,7 +141,7 @@ func TestDisposableInterface(t *testing.T) {
 // TestDoubleDisposal verifies that disposing a scope twice doesn't cause issues
 func TestDoubleDisposal(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope := container.CreateScope()
 	instance := scope.Make((*disposableService)(nil)).(*disposableService)
@@ -165,7 +165,7 @@ func TestDoubleDisposal(t *testing.T) {
 // TestDisposalErrors verifies that disposal errors are collected
 func TestDisposalErrors(t *testing.T) {
 	container := New()
-	container.Scoped((*failingDisposable)(nil), &failingDisposable{})
+	_ = container.Scoped((*failingDisposable)(nil), &failingDisposable{})
 
 	scope := container.CreateScope()
 	scope.Make((*failingDisposable)(nil))
@@ -179,7 +179,7 @@ func TestDisposalErrors(t *testing.T) {
 // TestChildScopeDisposal verifies child scopes are disposed with parent
 func TestChildScopeDisposal(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	parentScope := container.CreateScope()
 	childScope := parentScope.CreateChildScope()
@@ -205,10 +205,10 @@ func TestChildScopeDisposal(t *testing.T) {
 // TestDisposedScopePanics verifies that using a disposed scope panics
 func TestDisposedScopePanics(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope := container.CreateScope()
-	scope.Dispose()
+	_ = scope.Dispose()
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -223,7 +223,7 @@ func TestDisposedScopePanics(t *testing.T) {
 func TestCreateChildFromDisposedScope(t *testing.T) {
 	container := New()
 	scope := container.CreateScope()
-	scope.Dispose()
+	_ = scope.Dispose()
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -237,10 +237,10 @@ func TestCreateChildFromDisposedScope(t *testing.T) {
 // TestTransientLifetimeWithInitialize verifies transient instances are initialized
 func TestTransientLifetimeWithInitialize(t *testing.T) {
 	container := New()
-	container.Bind((*initializableService)(nil), &initializableService{})
+	_ = container.Bind((*initializableService)(nil), &initializableService{})
 
 	scope := container.CreateScope()
-	defer scope.Dispose()
+	defer func() { _ = scope.Dispose() }()
 
 	instance := scope.Make((*initializableService)(nil)).(*initializableService)
 
@@ -252,10 +252,10 @@ func TestTransientLifetimeWithInitialize(t *testing.T) {
 // TestScopedLifetimeConsistency verifies scoped instances are reused within scope
 func TestScopedLifetimeConsistency(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope := container.CreateScope()
-	defer scope.Dispose()
+	defer func() { _ = scope.Dispose() }()
 
 	instance1 := scope.Make((*disposableService)(nil)).(*disposableService)
 	instance2 := scope.Make((*disposableService)(nil)).(*disposableService)
@@ -272,15 +272,15 @@ func TestMultipleDisposablesInScope(t *testing.T) {
 	type serviceA struct{ disposableService }
 	type serviceB struct{ disposableService }
 
-	container.Scoped((*serviceA)(nil), &serviceA{})
-	container.Scoped((*serviceB)(nil), &serviceB{})
+	_ = container.Scoped((*serviceA)(nil), &serviceA{})
+	_ = container.Scoped((*serviceB)(nil), &serviceB{})
 
 	scope := container.CreateScope()
 
 	instanceA := scope.Make((*serviceA)(nil)).(*serviceA)
 	instanceB := scope.Make((*serviceB)(nil)).(*serviceB)
 
-	scope.Dispose()
+	_ = scope.Dispose()
 
 	if !instanceA.disposed {
 		t.Error("Service A should be disposed")
@@ -294,7 +294,7 @@ func TestMultipleDisposablesInScope(t *testing.T) {
 
 func TestScoped_SameWithinScope(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope := container.CreateScope()
 	instance1 := scope.Make((*disposableService)(nil))
@@ -307,7 +307,7 @@ func TestScoped_SameWithinScope(t *testing.T) {
 
 func TestScoped_DifferentAcrossScopes(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	scope1 := container.CreateScope()
 	scope2 := container.CreateScope()
@@ -322,7 +322,7 @@ func TestScoped_DifferentAcrossScopes(t *testing.T) {
 
 func TestScoped_PanicsFromRootContainer(t *testing.T) {
 	container := New()
-	container.Scoped((*disposableService)(nil), &disposableService{})
+	_ = container.Scoped((*disposableService)(nil), &disposableService{})
 
 	defer func() {
 		if r := recover(); r == nil {

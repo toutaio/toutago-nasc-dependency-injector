@@ -73,10 +73,10 @@ func TestBindConstructor_WithDependency(t *testing.T) {
 	container := New()
 
 	// Bind dependency
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
 	// Bind with constructor
-	container.BindConstructor((*ConstructorService)(nil), NewServiceWithLogger)
+	_ = container.BindConstructor((*ConstructorService)(nil), NewServiceWithLogger)
 
 	service := container.Make((*ConstructorService)(nil))
 	if service == nil {
@@ -94,11 +94,11 @@ func TestBindConstructor_MultipleDependencies(t *testing.T) {
 	container := New()
 
 	// Bind dependencies
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	// Bind with constructor
-	container.BindConstructor((*ConstructorService)(nil), NewServiceWithDeps)
+	_ = container.BindConstructor((*ConstructorService)(nil), NewServiceWithDeps)
 
 	service := container.Make((*ConstructorService)(nil))
 	if service == nil {
@@ -116,9 +116,9 @@ func TestBindConstructor_MultipleDependencies(t *testing.T) {
 
 func TestBindConstructor_WithError_Success(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
-	container.BindConstructor((*ConstructorService)(nil), NewServiceWithError)
+	_ = container.BindConstructor((*ConstructorService)(nil), NewServiceWithError)
 
 	service := container.Make((*ConstructorService)(nil))
 	if service == nil {
@@ -128,9 +128,9 @@ func TestBindConstructor_WithError_Success(t *testing.T) {
 
 func TestBindConstructor_WithError_Failure(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
-	container.BindConstructor((*ConstructorService)(nil), NewServiceThatFails)
+	_ = container.BindConstructor((*ConstructorService)(nil), NewServiceThatFails)
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -143,7 +143,7 @@ func TestBindConstructor_WithError_Failure(t *testing.T) {
 
 func TestSingletonConstructor(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
 	callCount := 0
 	NewServiceCounted := func(logger Logger) *ConstructorServiceImpl {
@@ -151,7 +151,7 @@ func TestSingletonConstructor(t *testing.T) {
 		return &ConstructorServiceImpl{Logger: logger}
 	}
 
-	container.SingletonConstructor((*ConstructorService)(nil), NewServiceCounted)
+	_ = container.SingletonConstructor((*ConstructorService)(nil), NewServiceCounted)
 
 	service1 := container.Make((*ConstructorService)(nil))
 	service2 := container.Make((*ConstructorService)(nil))
@@ -167,7 +167,7 @@ func TestSingletonConstructor(t *testing.T) {
 
 func TestScopedConstructor(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
 	callCount := 0
 	NewServiceCounted := func(logger Logger) *ConstructorServiceImpl {
@@ -175,7 +175,7 @@ func TestScopedConstructor(t *testing.T) {
 		return &ConstructorServiceImpl{Logger: logger}
 	}
 
-	container.ScopedConstructor((*ConstructorService)(nil), NewServiceCounted)
+	_ = container.ScopedConstructor((*ConstructorService)(nil), NewServiceCounted)
 
 	scope1 := container.CreateScope()
 	scope2 := container.CreateScope()
@@ -233,7 +233,7 @@ func TestConstructor_MissingDependency(t *testing.T) {
 	container := New()
 	// Logger NOT bound
 
-	container.BindConstructor((*ConstructorService)(nil), NewServiceWithLogger)
+	_ = container.BindConstructor((*ConstructorService)(nil), NewServiceWithLogger)
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -247,10 +247,10 @@ func TestConstructor_MissingDependency(t *testing.T) {
 // Benchmark
 func BenchmarkConstructorInvocation(b *testing.B) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
-	container.BindConstructor((*ConstructorService)(nil), NewServiceWithDeps)
+	_ = container.BindConstructor((*ConstructorService)(nil), NewServiceWithDeps)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -269,7 +269,7 @@ func TestConstructorErrors(t *testing.T) {
 		return nil, errors.New("construction failed")
 	}
 
-	c.BindConstructor((*Service)(nil), errorConstructor)
+	_ = c.BindConstructor((*Service)(nil), errorConstructor)
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -289,7 +289,7 @@ func TestSingletonConstructorError(t *testing.T) {
 		return nil, errors.New("singleton construction failed")
 	}
 
-	c.SingletonConstructor((*Service)(nil), errorConstructor)
+	_ = c.SingletonConstructor((*Service)(nil), errorConstructor)
 
 	defer func() {
 		if r := recover(); r == nil {

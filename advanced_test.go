@@ -73,7 +73,7 @@ func TestBindNamed_Basic(t *testing.T) {
 func TestBindNamed_DuplicateName(t *testing.T) {
 	container := New()
 
-	container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "main")
+	_ = container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "main")
 	err := container.BindNamed((*Logger)(nil), &FileLogger{}, "main")
 
 	if err == nil {
@@ -83,7 +83,7 @@ func TestBindNamed_DuplicateName(t *testing.T) {
 
 func TestMakeNamed_NotFound(t *testing.T) {
 	container := New()
-	container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
+	_ = container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -112,11 +112,11 @@ func TestMakeAll_MultipleBindings(t *testing.T) {
 	container := New()
 
 	// Default binding
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
 	// Named bindings
-	container.BindNamed((*Logger)(nil), &FileLogger{filename: "app.log"}, "file")
-	container.BindNamed((*Logger)(nil), &FileLogger{filename: "error.log"}, "error")
+	_ = container.BindNamed((*Logger)(nil), &FileLogger{filename: "app.log"}, "file")
+	_ = container.BindNamed((*Logger)(nil), &FileLogger{filename: "error.log"}, "error")
 
 	loggers := container.MakeAll((*Logger)(nil))
 
@@ -165,8 +165,8 @@ func TestBindWithTags_Basic(t *testing.T) {
 func TestMakeWithTag_MultipleMatches(t *testing.T) {
 	container := New()
 
-	container.BindWithTags((*Logger)(nil), &ConsoleLogger{}, []string{"logger", "enabled"})
-	container.BindWithTags((*Logger)(nil), &FileLogger{}, []string{"logger", "enabled"})
+	_ = container.BindWithTags((*Logger)(nil), &ConsoleLogger{}, []string{"logger", "enabled"})
+	_ = container.BindWithTags((*Logger)(nil), &FileLogger{}, []string{"logger", "enabled"})
 
 	loggers := container.MakeWithTag("logger")
 
@@ -183,7 +183,7 @@ func TestMakeWithTag_MultipleMatches(t *testing.T) {
 func TestMakeWithTag_NoMatches(t *testing.T) {
 	container := New()
 
-	container.BindWithTags((*Logger)(nil), &ConsoleLogger{}, []string{"console"})
+	_ = container.BindWithTags((*Logger)(nil), &ConsoleLogger{}, []string{"console"})
 
 	loggers := container.MakeWithTag("file")
 
@@ -213,8 +213,8 @@ func TestAutoWire_NamedDependency(t *testing.T) {
 	}
 
 	container := New()
-	container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
-	container.BindNamed((*Logger)(nil), &FileLogger{}, "file")
+	_ = container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
+	_ = container.BindNamed((*Logger)(nil), &FileLogger{}, "file")
 
 	service := &ServiceWithNamedDeps{}
 	err := container.AutoWire(service)
@@ -244,11 +244,11 @@ func TestAdvanced_RealWorldScenario(t *testing.T) {
 	container := New()
 
 	// Register named services
-	container.BindNamed((*NotificationService)(nil), &EmailNotifier{}, "primary")
-	container.BindNamed((*NotificationService)(nil), &SMSNotifier{}, "secondary")
+	_ = container.BindNamed((*NotificationService)(nil), &EmailNotifier{}, "primary")
+	_ = container.BindNamed((*NotificationService)(nil), &SMSNotifier{}, "secondary")
 
 	// Register tagged service
-	container.BindWithTags((*NotificationService)(nil), &PushNotifier{}, []string{"notifier", "mobile"})
+	_ = container.BindWithTags((*NotificationService)(nil), &PushNotifier{}, []string{"notifier", "mobile"})
 
 	// Auto-wire application
 	app := &Application{}
@@ -287,7 +287,7 @@ func TestAdvanced_NamedSingleton(t *testing.T) {
 		return &ConsoleLogger{}
 	}
 
-	container.SingletonConstructor((*Logger)(nil), NewCounter)
+	_ = container.SingletonConstructor((*Logger)(nil), NewCounter)
 
 	// Make multiple times
 	logger1 := container.Make((*Logger)(nil))

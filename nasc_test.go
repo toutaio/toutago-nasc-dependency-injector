@@ -97,7 +97,7 @@ func TestBind_Duplicate(t *testing.T) {
 
 func TestMake_Success(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	instance := container.Make((*Logger)(nil))
 	if instance == nil {
 		t.Fatal("Make() returned nil")
@@ -115,7 +115,7 @@ func TestMake_Success(t *testing.T) {
 
 func TestMake_MultipleInstances(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	instance1 := container.Make((*Logger)(nil))
 	instance2 := container.Make((*Logger)(nil))
 	if instance1 == instance2 {
@@ -168,7 +168,7 @@ func TestIntegration_MultipleBindings(t *testing.T) {
 
 func TestConcurrentMake(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
@@ -187,13 +187,13 @@ func BenchmarkBind(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		c := New()
-		c.Bind((*Logger)(nil), &ConsoleLogger{})
+		_ = c.Bind((*Logger)(nil), &ConsoleLogger{})
 	}
 }
 
 func BenchmarkMake(b *testing.B) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		container.Make((*Logger)(nil))
@@ -232,7 +232,7 @@ func TestFactoryErrorHandling(t *testing.T) {
 		return nil, errors.New("factory error")
 	}
 
-	c.Factory((*Service)(nil), factory)
+	_ = c.Factory((*Service)(nil), factory)
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -248,7 +248,7 @@ func TestInvalidFactoryType(t *testing.T) {
 
 	type Service struct{}
 
-	c.registry.Register(&registry.Binding{
+	_ = c.registry.Register(&registry.Binding{
 		AbstractType: reflect.TypeOf((*Service)(nil)).Elem(),
 		ConcreteType: reflect.TypeOf(&Service{}),
 		Lifetime:     string(LifetimeFactory),
@@ -269,7 +269,7 @@ func TestUnknownLifetime(t *testing.T) {
 
 	type Service struct{}
 
-	c.registry.Register(&registry.Binding{
+	_ = c.registry.Register(&registry.Binding{
 		AbstractType: reflect.TypeOf((*Service)(nil)).Elem(),
 		ConcreteType: reflect.TypeOf(&Service{}),
 		Lifetime:     "unknown-lifetime",
@@ -306,7 +306,7 @@ func TestReflectionCache_Clear(t *testing.T) {
 
 func TestSingleton_ReturnsSameInstance(t *testing.T) {
 	container := New()
-	container.Singleton((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Singleton((*Logger)(nil), &ConsoleLogger{})
 
 	instance1 := container.Make((*Logger)(nil))
 	instance2 := container.Make((*Logger)(nil))
@@ -318,7 +318,7 @@ func TestSingleton_ReturnsSameInstance(t *testing.T) {
 
 func TestSingleton_ThreadSafe(t *testing.T) {
 	container := New()
-	container.Singleton((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Singleton((*Logger)(nil), &ConsoleLogger{})
 
 	var wg sync.WaitGroup
 	instances := make([]interface{}, 50)
@@ -354,7 +354,7 @@ func TestFactory_CalledEachTime(t *testing.T) {
 		return &ConsoleLogger{}, nil
 	}
 
-	container.Factory((*Logger)(nil), factory)
+	_ = container.Factory((*Logger)(nil), factory)
 
 	container.Make((*Logger)(nil))
 	container.Make((*Logger)(nil))
@@ -372,7 +372,7 @@ func TestFactory_ReturnsNewInstances(t *testing.T) {
 		return &ConsoleLogger{}, nil
 	}
 
-	container.Factory((*Logger)(nil), factory)
+	_ = container.Factory((*Logger)(nil), factory)
 
 	instance1 := container.Make((*Logger)(nil))
 	instance2 := container.Make((*Logger)(nil))
@@ -384,7 +384,7 @@ func TestFactory_ReturnsNewInstances(t *testing.T) {
 
 func TestFactory_ReceivesContainer(t *testing.T) {
 	container := New()
-	container.Singleton((*Database)(nil), &MockDB{})
+	_ = container.Singleton((*Database)(nil), &MockDB{})
 
 	receivedContainer := false
 	factory := func(c *Nasc) (interface{}, error) {
@@ -395,7 +395,7 @@ func TestFactory_ReceivesContainer(t *testing.T) {
 		return &ConsoleLogger{}, nil
 	}
 
-	container.Factory((*Logger)(nil), factory)
+	_ = container.Factory((*Logger)(nil), factory)
 	container.Make((*Logger)(nil))
 
 	if !receivedContainer {

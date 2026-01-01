@@ -13,7 +13,7 @@ type BasicProvider struct {
 
 func (p *BasicProvider) Register(container *Nasc) error {
 	p.registerCalled = true
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 	return nil
 }
 
@@ -24,7 +24,7 @@ type BootableTestProvider struct {
 
 func (p *BootableTestProvider) Register(container *Nasc) error {
 	p.registerCalled = true
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 	return nil
 }
 
@@ -69,14 +69,14 @@ type CompositeProvider struct{}
 
 func (p *CompositeProvider) Register(container *Nasc) error {
 	// Register other providers
-	container.RegisterProvider(&BasicProvider{})
+	_ = container.RegisterProvider(&BasicProvider{})
 	return nil
 }
 
 type LoggingProvider struct{}
 
 func (p *LoggingProvider) Register(container *Nasc) error {
-	container.Singleton((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Singleton((*Logger)(nil), &ConsoleLogger{})
 	return nil
 }
 
@@ -89,7 +89,7 @@ func (p *DatabaseProvider) Register(container *Nasc) error {
 	NewDB := func(logger Logger) *MockDB {
 		return &MockDB{}
 	}
-	container.SingletonConstructor((*Database)(nil), NewDB)
+	_ = container.SingletonConstructor((*Database)(nil), NewDB)
 	return nil
 }
 
@@ -172,7 +172,7 @@ func TestBootProviders_FailingBoot(t *testing.T) {
 	container := New()
 	provider := &FailingBootProvider{}
 
-	container.RegisterProvider(provider)
+	_ = container.RegisterProvider(provider)
 
 	err := container.BootProviders()
 	if err == nil {
@@ -267,8 +267,8 @@ func TestBootProviders_MultipleProviders(t *testing.T) {
 	provider1 := &BootableTestProvider{}
 	provider2 := &BootableTestProvider{}
 
-	container.RegisterProvider(provider1)
-	container.RegisterProvider(provider2)
+	_ = container.RegisterProvider(provider1)
+	_ = container.RegisterProvider(provider2)
 
 	err := container.BootProviders()
 	if err != nil {
@@ -285,7 +285,7 @@ func TestBootProviders_Idempotent(t *testing.T) {
 	container := New()
 	provider := &BootableTestProvider{}
 
-	container.RegisterProvider(provider)
+	_ = container.RegisterProvider(provider)
 
 	// Boot once
 	err := container.BootProviders()
@@ -313,8 +313,8 @@ func TestGetProviders(t *testing.T) {
 		t.Error("New container should have no providers")
 	}
 
-	container.RegisterProvider(&BasicProvider{})
-	container.RegisterProvider(&BootableTestProvider{})
+	_ = container.RegisterProvider(&BasicProvider{})
+	_ = container.RegisterProvider(&BootableTestProvider{})
 
 	providers := container.GetProviders()
 	if len(providers) != 2 {
@@ -327,8 +327,8 @@ func TestProvider_RealWorldScenario(t *testing.T) {
 	container := New()
 
 	// Register providers
-	container.RegisterProvider(&LoggingProvider{})
-	container.RegisterProvider(&DatabaseProvider{})
+	_ = container.RegisterProvider(&LoggingProvider{})
+	_ = container.RegisterProvider(&DatabaseProvider{})
 
 	// Boot
 	err := container.BootProviders()

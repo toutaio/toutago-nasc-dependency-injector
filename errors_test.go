@@ -56,7 +56,7 @@ func NewCircularB(a *CircularA) *CircularB {
 
 func TestMakeSafe_Success(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
 	logger, err := container.MakeSafe((*Logger)(nil))
 	if err != nil {
@@ -101,7 +101,7 @@ func TestMakeSafe_NilType(t *testing.T) {
 
 func TestMakeNamedSafe_Success(t *testing.T) {
 	container := New()
-	container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
+	_ = container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
 
 	logger, err := container.MakeNamedSafe((*Logger)(nil), "console")
 	if err != nil {
@@ -115,7 +115,7 @@ func TestMakeNamedSafe_Success(t *testing.T) {
 
 func TestMakeNamedSafe_NotFound(t *testing.T) {
 	container := New()
-	container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
+	_ = container.BindNamed((*Logger)(nil), &ConsoleLogger{}, "console")
 
 	logger, err := container.MakeNamedSafe((*Logger)(nil), "notfound")
 
@@ -144,8 +144,8 @@ func TestCircularDependency_DirectConstructor(t *testing.T) {
 	container := New()
 
 	// A depends on B, B depends on A
-	container.BindConstructor((*CircularA)(nil), NewCircularA)
-	container.BindConstructor((*CircularB)(nil), NewCircularB)
+	_ = container.BindConstructor((*CircularA)(nil), NewCircularA)
+	_ = container.BindConstructor((*CircularB)(nil), NewCircularB)
 
 	_, err := container.MakeSafe((*CircularA)(nil))
 
@@ -172,9 +172,9 @@ func TestCircularDependency_IndirectChain(t *testing.T) {
 		return &ServiceCImpl{A: a}
 	}
 
-	container.BindConstructor((*ServiceA)(nil), NewServiceA)
-	container.BindConstructor((*ServiceB)(nil), NewServiceB)
-	container.BindConstructor((*ServiceC)(nil), NewServiceC)
+	_ = container.BindConstructor((*ServiceA)(nil), NewServiceA)
+	_ = container.BindConstructor((*ServiceB)(nil), NewServiceB)
+	_ = container.BindConstructor((*ServiceC)(nil), NewServiceC)
 
 	_, err := container.MakeSafe((*ServiceA)(nil))
 
@@ -196,7 +196,7 @@ func TestCircularDependency_IndirectChain(t *testing.T) {
 
 func TestMustMake_Success(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
 
 	logger := container.MustMake((*Logger)(nil))
 
@@ -219,8 +219,8 @@ func TestMustMake_Panic(t *testing.T) {
 
 func TestValidate_AllBindingsValid(t *testing.T) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	err := container.Validate()
 
@@ -237,7 +237,7 @@ func TestValidate_MissingDependency(t *testing.T) {
 		return &ServiceAImpl{}
 	}
 
-	container.BindConstructor((*ServiceA)(nil), NewService)
+	_ = container.BindConstructor((*ServiceA)(nil), NewService)
 
 	err := container.Validate()
 
@@ -254,8 +254,8 @@ func TestValidate_MissingDependency(t *testing.T) {
 func TestValidate_CircularDependency(t *testing.T) {
 	container := New()
 
-	container.BindConstructor((*CircularA)(nil), NewCircularA)
-	container.BindConstructor((*CircularB)(nil), NewCircularB)
+	_ = container.BindConstructor((*CircularA)(nil), NewCircularA)
+	_ = container.BindConstructor((*CircularB)(nil), NewCircularB)
 
 	err := container.Validate()
 
@@ -328,7 +328,7 @@ func TestSafeMethods_WithConstructorError(t *testing.T) {
 		return nil, errors.New("constructor failed")
 	}
 
-	container.BindConstructor((*Logger)(nil), FailingConstructor)
+	_ = container.BindConstructor((*Logger)(nil), FailingConstructor)
 
 	logger, err := container.MakeSafe((*Logger)(nil))
 
@@ -348,28 +348,28 @@ func TestSafeMethods_WithConstructorError(t *testing.T) {
 
 func BenchmarkMakeSafe_NoCircular(b *testing.B) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		container.MakeSafe((*Logger)(nil))
+		_, _ = container.MakeSafe((*Logger)(nil))
 	}
 }
 
 func BenchmarkMakeSafe_WithDependencies(b *testing.B) {
 	container := New()
-	container.Bind((*Logger)(nil), &ConsoleLogger{})
-	container.Bind((*Database)(nil), &MockDB{})
+	_ = container.Bind((*Logger)(nil), &ConsoleLogger{})
+	_ = container.Bind((*Database)(nil), &MockDB{})
 
 	NewService := func(logger Logger, db Database) *ServiceAImpl {
 		return &ServiceAImpl{}
 	}
-	container.BindConstructor((*ServiceA)(nil), NewService)
+	_ = container.BindConstructor((*ServiceA)(nil), NewService)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		container.MakeSafe((*ServiceA)(nil))
+		_, _ = container.MakeSafe((*ServiceA)(nil))
 	}
 }
 

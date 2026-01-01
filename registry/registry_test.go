@@ -93,7 +93,7 @@ func TestGet_Success(t *testing.T) {
 		ConcreteType: concreteType,
 	}
 
-	reg.Register(expected)
+	_ = reg.Register(expected)
 
 	got, err := reg.Get(interfaceType)
 	if err != nil {
@@ -143,7 +143,7 @@ func TestHas_ExistsAndNotExists(t *testing.T) {
 		AbstractType: interfaceType,
 		ConcreteType: concreteType,
 	}
-	reg.Register(binding)
+	_ = reg.Register(binding)
 
 	// Should exist now
 	if !reg.Has(interfaceType) {
@@ -160,7 +160,7 @@ func TestConcurrentReads(t *testing.T) {
 		AbstractType: interfaceType,
 		ConcreteType: concreteType,
 	}
-	reg.Register(binding)
+	_ = reg.Register(binding)
 
 	// Concurrent reads
 	var wg sync.WaitGroup
@@ -186,7 +186,7 @@ func TestConcurrentReadsAndWrites(t *testing.T) {
 
 	// Pre-register a type for concurrent reads
 	testType := reflect.TypeOf((*testInterface)(nil)).Elem()
-	reg.Register(&Binding{
+	_ = reg.Register(&Binding{
 		AbstractType: testType,
 		ConcreteType: reflect.TypeOf(&testImplementation{}),
 	})
@@ -226,7 +226,7 @@ func TestConcurrentReadsAndWrites(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			reg.Has(testType)
-			reg.Get(testType)
+			_, _ = reg.Get(testType)
 		}()
 	}
 
@@ -308,7 +308,7 @@ func TestGetNamed_Success(t *testing.T) {
 		Name:         "myImplementation",
 	}
 
-	reg.RegisterNamed(expected)
+	_ = reg.RegisterNamed(expected)
 
 	got, err := reg.GetNamed(interfaceType, "myImplementation")
 	if err != nil {
@@ -342,7 +342,7 @@ func TestGetNamed_TypeNotFound(t *testing.T) {
 		ConcreteType: reflect.TypeOf(&testImplementation{}),
 		Name:         "test",
 	}
-	reg.RegisterNamed(binding)
+	_ = reg.RegisterNamed(binding)
 
 	_, err := reg.GetNamed(otherType, "test")
 	if err == nil {
@@ -358,7 +358,7 @@ func TestGetAll_UnnamedOnly(t *testing.T) {
 		AbstractType: interfaceType,
 		ConcreteType: reflect.TypeOf(&testImplementation{}),
 	}
-	reg.Register(binding)
+	_ = reg.Register(binding)
 
 	result := reg.GetAll(interfaceType)
 	if len(result) != 1 {
@@ -381,8 +381,8 @@ func TestGetAll_NamedOnly(t *testing.T) {
 		Name:         "impl2",
 	}
 
-	reg.RegisterNamed(binding1)
-	reg.RegisterNamed(binding2)
+	_ = reg.RegisterNamed(binding1)
+	_ = reg.RegisterNamed(binding2)
 
 	result := reg.GetAll(interfaceType)
 	if len(result) != 2 {
@@ -404,8 +404,8 @@ func TestGetAll_MixedUnnamedAndNamed(t *testing.T) {
 		Name:         "named",
 	}
 
-	reg.Register(unnamed)
-	reg.RegisterNamed(named)
+	_ = reg.Register(unnamed)
+	_ = reg.RegisterNamed(named)
 
 	result := reg.GetAll(interfaceType)
 	if len(result) != 2 {
@@ -439,8 +439,8 @@ func TestGetByTag_Found(t *testing.T) {
 		Name:         "named",
 	}
 
-	reg.Register(binding1)
-	reg.RegisterNamed(binding2)
+	_ = reg.Register(binding1)
+	_ = reg.RegisterNamed(binding2)
 
 	result := reg.GetByTag("tag2")
 	if len(result) != 2 {
@@ -457,7 +457,7 @@ func TestGetByTag_NotFound(t *testing.T) {
 		ConcreteType: reflect.TypeOf(&testImplementation{}),
 		Tags:         []string{"tag1"},
 	}
-	reg.Register(binding)
+	_ = reg.Register(binding)
 
 	result := reg.GetByTag("nonexistent")
 	if len(result) != 0 {
@@ -479,8 +479,8 @@ func TestGetAllTypes(t *testing.T) {
 		ConcreteType: reflect.TypeOf(""),
 	}
 
-	reg.Register(binding1)
-	reg.Register(binding2)
+	_ = reg.Register(binding1)
+	_ = reg.Register(binding2)
 
 	types := reg.GetAllTypes()
 	if len(types) != 2 {
@@ -511,8 +511,8 @@ func TestGetAllNamedFor_Success(t *testing.T) {
 		Name:         "impl2",
 	}
 
-	reg.RegisterNamed(binding1)
-	reg.RegisterNamed(binding2)
+	_ = reg.RegisterNamed(binding1)
+	_ = reg.RegisterNamed(binding2)
 
 	names := reg.GetAllNamedFor(interfaceType)
 	if len(names) != 2 {
@@ -538,7 +538,7 @@ func TestHasUnnamedBinding_True(t *testing.T) {
 		AbstractType: interfaceType,
 		ConcreteType: reflect.TypeOf(&testImplementation{}),
 	}
-	reg.Register(binding)
+	_ = reg.Register(binding)
 
 	if !reg.HasUnnamedBinding(interfaceType) {
 		t.Error("HasUnnamedBinding() should return true")

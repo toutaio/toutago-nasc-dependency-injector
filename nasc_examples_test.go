@@ -37,7 +37,7 @@ func ExampleNasc_Make() {
 	container := New()
 
 	// Bind and resolve
-	container.Bind((*ExampleGreeter)(nil), &ExampleSimpleGreeter{})
+	_ = container.Bind((*ExampleGreeter)(nil), &ExampleSimpleGreeter{})
 	instance := container.Make((*ExampleGreeter)(nil))
 
 	greeter := instance.(ExampleGreeter)

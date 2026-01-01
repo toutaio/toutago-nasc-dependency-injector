@@ -48,7 +48,7 @@ func (s *BenchUserService) Process(data string) string {
 // BenchmarkSingletonResolution benchmarks singleton instance retrieval.
 func BenchmarkSingletonResolution(b *testing.B) {
 	container := New()
-	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
 
 	// Warm up the cache
 	_ = container.Make((*BenchLogger)(nil))
@@ -64,7 +64,7 @@ func BenchmarkSingletonResolution(b *testing.B) {
 // BenchmarkTransientResolution benchmarks transient instance creation.
 func BenchmarkTransientResolution(b *testing.B) {
 	container := New()
-	container.Bind((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Bind((*BenchLogger)(nil), &BenchConsoleLogger{})
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -77,7 +77,7 @@ func BenchmarkTransientResolution(b *testing.B) {
 // BenchmarkConstructorResolution benchmarks constructor-based resolution.
 func BenchmarkConstructorResolution(b *testing.B) {
 	container := New()
-	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
 
 	err := container.BindConstructor((*BenchDatabase)(nil), func(logger BenchLogger) *BenchPostgresDB {
 		return &BenchPostgresDB{Logger: logger}
@@ -97,9 +97,9 @@ func BenchmarkConstructorResolution(b *testing.B) {
 // BenchmarkAutoWireResolution benchmarks auto-wiring performance.
 func BenchmarkAutoWireResolution(b *testing.B) {
 	container := New()
-	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
-	container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
-	container.BindAutoWire((*BenchService)(nil), &BenchUserService{})
+	_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
+	_ = container.BindAutoWire((*BenchService)(nil), &BenchUserService{})
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -112,7 +112,7 @@ func BenchmarkAutoWireResolution(b *testing.B) {
 // BenchmarkConcurrentResolution benchmarks concurrent singleton access.
 func BenchmarkConcurrentResolution(b *testing.B) {
 	container := New()
-	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
 
 	// Warm up cache
 	_ = container.Make((*BenchLogger)(nil))
@@ -180,9 +180,9 @@ func BenchmarkNamedResolution(b *testing.B) {
 // BenchmarkScopedResolution benchmarks scoped lifetime performance.
 func BenchmarkScopedResolution(b *testing.B) {
 	container := New()
-	container.Scoped((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Scoped((*BenchLogger)(nil), &BenchConsoleLogger{})
 	scope := container.CreateScope()
-	defer scope.Dispose()
+	defer func() { _ = scope.Dispose() }()
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -197,9 +197,9 @@ func BenchmarkDeepDependencyGraph(b *testing.B) {
 	container := New()
 
 	// Build a dependency graph
-	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
-	container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
-	container.BindAutoWire((*BenchService)(nil), &BenchUserService{})
+	_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
+	_ = container.BindAutoWire((*BenchService)(nil), &BenchUserService{})
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -215,7 +215,7 @@ func BenchmarkMakeAllResolution(b *testing.B) {
 
 	for i := 0; i < 10; i++ {
 		name := fmt.Sprintf("logger%d", i)
-		container.BindNamed((*BenchLogger)(nil), &BenchConsoleLogger{prefix: name}, name)
+		_ = container.BindNamed((*BenchLogger)(nil), &BenchConsoleLogger{prefix: name}, name)
 	}
 
 	b.ResetTimer()
@@ -233,7 +233,7 @@ func BenchmarkConcurrentSingletonCreation(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		container := New()
-		container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+		_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
 
 		var wg sync.WaitGroup
 		goroutines := 100
@@ -253,9 +253,9 @@ func BenchmarkConcurrentSingletonCreation(b *testing.B) {
 // BenchmarkValidation benchmarks container validation performance.
 func BenchmarkValidation(b *testing.B) {
 	container := New()
-	container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
-	container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
-	container.BindAutoWire((*BenchService)(nil), &BenchUserService{})
+	_ = container.Singleton((*BenchLogger)(nil), &BenchConsoleLogger{})
+	_ = container.Singleton((*BenchDatabase)(nil), &BenchPostgresDB{})
+	_ = container.BindAutoWire((*BenchService)(nil), &BenchUserService{})
 
 	b.ResetTimer()
 	b.ReportAllocs()
