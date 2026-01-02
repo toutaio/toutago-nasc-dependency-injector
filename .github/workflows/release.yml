@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Run tests
+        run: |
+          go test -v -race -coverprofile=coverage.out ./pkg/...
+          go tool cover -func=coverage.out
+
+      - name: Run benchmarks
+        run: |
+          go test -bench=. -benchmem ./benchmarks/... > benchmarks.txt
+          cat benchmarks.txt
+
+      - name: Check test coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below threshold of 85%"
+            exit 1
+          fi
+          echo "✅ Coverage ${COVERAGE}% meets threshold of 85%"
+
+      - name: Build
+        run: |
+          go build -v ./...
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Extract changelog for this version
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          sed -n "/## \[${VERSION#v}\]/,/## \[/p" CHANGELOG.md | sed '$d' > release_notes.md
+          cat release_notes.md
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            coverage.out
+            benchmarks.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Release ${{ steps.version.outputs.VERSION }} created successfully!"
+          echo "📦 Package: github.com/toutaio/toutago-nasc-dependency-injector@${{ steps.version.outputs.VERSION }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Release failed. Check the logs above."
+          exit 1

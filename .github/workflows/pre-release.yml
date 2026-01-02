@@ -1,0 +1,82 @@
+name: Pre-Release Checks
+
+on:
+  push:
+    tags:
+      - 'v*-rc*'
+      - 'v*-beta*'
+      - 'v*-alpha*'
+
+permissions:
+  contents: write
+
+jobs:
+  pre-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+
+      - name: Run full test suite
+        run: |
+          go test -v -race -coverprofile=coverage.out -timeout=10m ./pkg/...
+
+      - name: Coverage check
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 80.0" | bc -l) )); then
+            echo "⚠️  Warning: Coverage ${COVERAGE}% is below 80% for pre-release"
+          else
+            echo "✅ Coverage ${COVERAGE}% is acceptable"
+          fi
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem ./benchmarks/...
+
+      - name: Security scan
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Static analysis
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run --timeout=5m
+
+      - name: Extract version
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Pre-Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Pre-Release ${{ steps.version.outputs.VERSION }}
+          draft: false
+          prerelease: true
+          body: |
+            ## ⚠️ Pre-Release Version
+            
+            This is a pre-release version for testing purposes.
+            **Do not use in production.**
+            
+            ### Version: ${{ steps.version.outputs.VERSION }}
+            
+            Please help test this release and report any issues.
+            
+            ### Testing Checklist
+            - [ ] All tests passing
+            - [ ] Benchmarks acceptable
+            - [ ] No security vulnerabilities
+            - [ ] Documentation updated
+            - [ ] Examples working
+            
+            ### Feedback
+            Please provide feedback in the [discussions](https://github.com/toutaio/toutago-nasc-dependency-injector/discussions).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
