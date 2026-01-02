@@ -27,11 +27,6 @@ jobs:
           go test -v -race -coverprofile=coverage.out $(go list ./... | grep -v examples)
           go tool cover -func=coverage.out
 
-      - name: Run benchmarks
-        run: |
-          go test -bench=. -benchmem ./benchmarks/... > benchmarks.txt
-          cat benchmarks.txt
-
       - name: Check test coverage
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
