@@ -24,7 +24,7 @@ jobs:
 
       - name: Run full test suite
         run: |
-          go test -v -race -coverprofile=coverage.out -timeout=10m ./pkg/...
+          go test -v -race -coverprofile=coverage.out -timeout=10m $(go list ./... | grep -v examples)
 
       - name: Coverage check
         run: |

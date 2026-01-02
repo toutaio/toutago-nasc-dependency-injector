@@ -53,7 +53,7 @@ jobs:
         go-version: '1.23.x'
         
     - name: Run tests with coverage
-      run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      run: go test -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v examples)
       
     - name: Generate coverage report
       run: |
