@@ -9,6 +9,12 @@ A production-ready, high-performance dependency injection container for Go, desi
 
 > **Nasc** (Old Irish): *Link or bond* - representing the connections between components in your application.
 
+## Status
+
+✅ **Production Ready** - Stable v1.0+ releases  
+📦 [View Releases](https://github.com/toutaio/toutago-nasc-dependency-injector/releases) for the latest version  
+📖 [Changelog](CHANGELOG.md) - Full version history
+
 ## ✨ Features
 
 - 🚀 **High Performance** - Singleton resolution <100ns, transient <1μs
